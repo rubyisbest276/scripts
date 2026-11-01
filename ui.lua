@@ -55,6 +55,8 @@ local Library = {
     Name = "RubyUI",
     Open = true,
     Accent = Color3.fromRGB(250, 44, 83),
+    AccentSecondary = Color3.fromRGB(255, 120, 95),
+    AccentDeep = Color3.fromRGB(190, 20, 90),
     GlassBg = Color3.fromRGB(15, 16, 22),
     GlassSidebar = Color3.fromRGB(11, 12, 17),
     GlassSection = Color3.fromRGB(20, 22, 30),
@@ -243,6 +245,40 @@ function Library:Animate(object, animType)
             Library:Tween(object, 0.2, { BackgroundColor3 = originalColor })
         end)
     end
+end
+
+-- Adds a soft, 9-slice drop shadow behind any GuiObject. Purely cosmetic.
+function Library:AddShadow(parent, cfg)
+    cfg = cfg or {}
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxassetid://5028857084"
+    shadow.ImageColor3 = cfg.Color or Color3.fromRGB(0, 0, 0)
+    shadow.ImageTransparency = cfg.Transparency or 0.55
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+    shadow.Size = UDim2.new(1, cfg.Spread or 34, 1, cfg.Spread or 34)
+    shadow.Position = UDim2.new(0.5, 0, 0.5, (cfg.YOffset or 4))
+    shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+    shadow.ZIndex = (parent.ZIndex or 1) - 1
+    shadow.Parent = parent
+    return shadow
+end
+
+-- Applies a two/three color gradient across an instance. colors = {Color3, Color3, Color3?}
+function Library:ApplyGradient(instance, colors, rotation)
+    local seq = {}
+    local count = #colors
+    for i, c in ipairs(colors) do
+        local t = (count == 1) and 0 or (i - 1) / (count - 1)
+        table.insert(seq, ColorSequenceKeypoint.new(t, c))
+    end
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new(seq)
+    grad.Rotation = rotation or 90
+    grad.Parent = instance
+    return grad
 end
 
 local function Round(num, decimals)
@@ -522,7 +558,7 @@ function Library.Notify(...)
     notifFrame.Parent = slotFrame
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = notifFrame
 
     local stroke = Instance.new("UIStroke")
@@ -531,12 +567,16 @@ function Library.Notify(...)
     stroke.Transparency = 0.2
     stroke.Parent = notifFrame
 
+    Library:AddShadow(notifFrame, { Transparency = 0.5, Spread = 24, YOffset = 4 })
+
     local accentBar = Instance.new("Frame")
     accentBar.Size = UDim2.new(0, 4, 1, 0)
     accentBar.Position = UDim2.new(0, 0, 0, 0)
     accentBar.BackgroundColor3 = Library.Accent
     accentBar.BorderSizePixel = 0
     accentBar.Parent = notifFrame
+
+    Library:ApplyGradient(accentBar, { Library.AccentDeep, Library.Accent, Library.AccentSecondary }, 90)
 
     local iconLabel = Instance.new("ImageLabel")
     iconLabel.Size = UDim2.new(0, 22, 0, 22)
@@ -631,13 +671,15 @@ function Library:InitKeySystem(config)
     KeyFrame.Parent = ScreenGui
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 14)
     corner.Parent = KeyFrame
 
     local stroke = Instance.new("UIStroke")
     stroke.Color = self.GlassBorder
     stroke.Thickness = 1.2
     stroke.Parent = KeyFrame
+
+    Library:AddShadow(KeyFrame, { Transparency = 0.4, Spread = 60, YOffset = 10 })
 
     local isDrag, dragStart, startPos
     KeyFrame.InputBegan:Connect(function(input)
@@ -663,10 +705,12 @@ function Library:InitKeySystem(config)
     table.insert(self.Connections, dragMv)
 
     local topGlow = Instance.new("Frame")
-    topGlow.Size = UDim2.new(1, 0, 0, 2)
+    topGlow.Size = UDim2.new(1, 0, 0, 3)
     topGlow.BackgroundColor3 = self.Accent
     topGlow.BorderSizePixel = 0
     topGlow.Parent = KeyFrame
+
+    Library:ApplyGradient(topGlow, { self.AccentDeep, self.Accent, self.AccentSecondary }, 0)
 
     local kTitle = Instance.new("TextLabel")
     kTitle.Size = UDim2.new(1, -24, 0, 30)
@@ -726,8 +770,10 @@ function Library:InitKeySystem(config)
     verifyBtn.Parent = KeyFrame
 
     local vCorner = Instance.new("UICorner")
-    vCorner.CornerRadius = UDim.new(0, 6)
+    vCorner.CornerRadius = UDim.new(0, 8)
     vCorner.Parent = verifyBtn
+
+    Library:ApplyGradient(verifyBtn, { self.AccentDeep, self.Accent, self.AccentSecondary }, 0)
 
     local discordBtn = Instance.new("TextButton")
     discordBtn.Size = UDim2.new(1, -32, 0, 24)
@@ -844,7 +890,7 @@ function Library:CreateWindow(config)
     self.BgImageLabel = bgImageLabel
 
     local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 8)
+    mainCorner.CornerRadius = UDim.new(0, 14)
     mainCorner.Parent = MainWindow
 
     local mainStroke = Instance.new("UIStroke")
@@ -854,6 +900,8 @@ function Library:CreateWindow(config)
     mainStroke.Parent = MainWindow
 
     Library:RegisterColor(mainStroke, "Color", "GlassBorder")
+
+    Library:AddShadow(MainWindow, { Transparency = 0.45, Spread = 60, YOffset = 10 })
 
     local dragging, dragStart, startPos
     local titleBar = Instance.new("Frame")
@@ -892,12 +940,31 @@ function Library:CreateWindow(config)
     table.insert(self.Connections, dragMoveConn)
 
     local topAccent = Instance.new("Frame")
-    topAccent.Size = UDim2.new(1, 0, 0, 2)
+    topAccent.Size = UDim2.new(1, 0, 0, 3)
     topAccent.BackgroundColor3 = self.Accent
     topAccent.BorderSizePixel = 0
+    topAccent.ZIndex = 5
     topAccent.Parent = MainWindow
 
+    Library:ApplyGradient(topAccent, { self.AccentDeep, self.Accent, self.AccentSecondary }, 0)
     Library:RegisterColor(topAccent, "BackgroundColor3", "Accent")
+
+    local topAccentGlow = Instance.new("Frame")
+    topAccentGlow.Size = UDim2.new(1, 0, 0, 14)
+    topAccentGlow.BackgroundColor3 = self.Accent
+    topAccentGlow.BackgroundTransparency = 1
+    topAccentGlow.BorderSizePixel = 0
+    topAccentGlow.ZIndex = 4
+    topAccentGlow.Parent = MainWindow
+
+    local glowGrad = Instance.new("UIGradient")
+    glowGrad.Rotation = 90
+    glowGrad.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.75),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    glowGrad.Parent = topAccentGlow
+    Library:RegisterColor(topAccentGlow, "BackgroundColor3", "Accent")
 
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleText"
@@ -1068,7 +1135,7 @@ function Library:CreateWindow(config)
         Library:RegisterColor(tabButton, "BackgroundColor3", "GlassSection")
 
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.CornerRadius = UDim.new(0, 8)
         btnCorner.Parent = tabButton
 
         local iconImg = Instance.new("ImageLabel")
@@ -1095,17 +1162,18 @@ function Library:CreateWindow(config)
         Library:RegisterText(tabTitle, false)
 
         local activeBar = Instance.new("Frame")
-        activeBar.Size = UDim2.new(0, 3, 0, 16)
-        activeBar.Position = UDim2.new(0, 1, 0.5, -8)
+        activeBar.Size = UDim2.new(0, 3, 0, 14)
+        activeBar.Position = UDim2.new(0, 1, 0.5, -7)
         activeBar.BackgroundColor3 = Library.Accent
         activeBar.BorderSizePixel = 0
         activeBar.BackgroundTransparency = 1
         activeBar.Parent = tabButton
 
+        Library:ApplyGradient(activeBar, { Library.AccentDeep, Library.Accent, Library.AccentSecondary }, 90)
         Library:RegisterColor(activeBar, "BackgroundColor3", "Accent")
 
         local abCorner = Instance.new("UICorner")
-        abCorner.CornerRadius = UDim.new(0, 2)
+        abCorner.CornerRadius = UDim.new(1, 0)
         abCorner.Parent = activeBar
 
         local tabScroll = Instance.new("ScrollingFrame")
@@ -1204,6 +1272,17 @@ function Library:CreateWindow(config)
 
         tabButton.MouseButton1Click:Connect(ShowTab)
 
+        tabButton.MouseEnter:Connect(function()
+            if WindowObj.CurrentTab ~= Tab then
+                Library:Tween(tabButton, 0.12, { BackgroundTransparency = 0.7 })
+            end
+        end)
+        tabButton.MouseLeave:Connect(function()
+            if WindowObj.CurrentTab ~= Tab then
+                Library:Tween(tabButton, 0.12, { BackgroundTransparency = 1 })
+            end
+        end)
+
         Tab.View = tabScroll
         Tab.Button = tabButton
         Tab.Label = tabTitle
@@ -1227,7 +1306,7 @@ function Library:CreateWindow(config)
             Library:RegisterColor(gb, "BackgroundColor3", "GlassSection")
 
             local gbCorner = Instance.new("UICorner")
-            gbCorner.CornerRadius = UDim.new(0, 6)
+            gbCorner.CornerRadius = UDim.new(0, 10)
             gbCorner.Parent = gb
 
             local gbStroke = Instance.new("UIStroke")
@@ -1235,6 +1314,20 @@ function Library:CreateWindow(config)
             gbStroke.Thickness = 1
             gbStroke.Transparency = 0.35
             gbStroke.Parent = gb
+
+            local gbDot = Instance.new("Frame")
+            gbDot.Size = UDim2.new(0, 4, 0, 4)
+            gbDot.Position = UDim2.new(0, 10, 0, 13)
+            gbDot.AnchorPoint = Vector2.new(0, 0.5)
+            gbDot.BackgroundColor3 = Library.Accent
+            gbDot.BorderSizePixel = 0
+            gbDot.Parent = gb
+
+            local gbDotCorner = Instance.new("UICorner")
+            gbDotCorner.CornerRadius = UDim.new(1, 0)
+            gbDotCorner.Parent = gbDot
+
+            Library:RegisterColor(gbDot, "BackgroundColor3", "Accent")
 
             Library:RegisterColor(gbStroke, "Color", "GlassBorder")
 
@@ -1245,8 +1338,8 @@ function Library:CreateWindow(config)
             header.Parent = gb
 
             local gbTitleLabel = Instance.new("TextLabel")
-            gbTitleLabel.Size = UDim2.new(1, -20, 1, 0)
-            gbTitleLabel.Position = UDim2.new(0, 10, 0, 0)
+            gbTitleLabel.Size = UDim2.new(1, -28, 1, 0)
+            gbTitleLabel.Position = UDim2.new(0, 18, 0, 0)
             gbTitleLabel.BackgroundTransparency = 1
             gbTitleLabel.Font = Library.FontBold
             gbTitleLabel.Text = groupTitle
@@ -1313,28 +1406,51 @@ function Library:CreateWindow(config)
                 row.Parent = container
 
                 local checkBox = Instance.new("TextButton")
-                checkBox.Size = UDim2.new(0, 16, 0, 16)
+                checkBox.Name = "Pill"
+                checkBox.Size = UDim2.new(0, 30, 0, 16)
                 checkBox.Position = UDim2.new(0, 0, 0.5, -8)
                 checkBox.BackgroundColor3 = state and Library.Accent or Library.GlassElement
-                checkBox.BackgroundTransparency = state and 0 or 0.2
+                checkBox.BackgroundTransparency = state and 0 or 0.1
                 checkBox.BorderSizePixel = 0
                 checkBox.Text = ""
                 checkBox.AutoButtonColor = false
+                checkBox.ClipsDescendants = false
                 checkBox.Parent = row
 
                 local cbCorner = Instance.new("UICorner")
-                cbCorner.CornerRadius = UDim.new(0, 4)
+                cbCorner.CornerRadius = UDim.new(1, 0)
                 cbCorner.Parent = checkBox
 
                 local cbStroke = Instance.new("UIStroke")
                 cbStroke.Color = Library.GlassBorderSoft
+                cbStroke.Transparency = 0.3
                 cbStroke.Parent = checkBox
 
                 Library:RegisterColor(cbStroke, "Color", "GlassBorderSoft")
 
+                if state then
+                    Library:ApplyGradient(checkBox, { Library.AccentDeep, Library.Accent }, 0)
+                end
+
+                local knob = Instance.new("Frame")
+                knob.Name = "Knob"
+                knob.Size = UDim2.new(0, 12, 0, 12)
+                knob.AnchorPoint = Vector2.new(0, 0.5)
+                knob.Position = state and UDim2.new(1, -14, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                knob.BorderSizePixel = 0
+                knob.ZIndex = 2
+                knob.Parent = checkBox
+
+                local knobCorner = Instance.new("UICorner")
+                knobCorner.CornerRadius = UDim.new(1, 0)
+                knobCorner.Parent = knob
+
+                Library:AddShadow(knob, { Transparency = 0.6, Spread = 10, YOffset = 2 })
+
                 local titleBtn = Instance.new("TextButton")
-                titleBtn.Size = UDim2.new(1, -26, 1, 0)
-                titleBtn.Position = UDim2.new(0, 24, 0, 0)
+                titleBtn.Size = UDim2.new(1, -40, 1, 0)
+                titleBtn.Position = UDim2.new(0, 38, 0, 0)
                 titleBtn.BackgroundTransparency = 1
                 titleBtn.Font = Library.Font
                 titleBtn.Text = text
@@ -1368,10 +1484,21 @@ function Library:CreateWindow(config)
                     Type = "Toggle",
                     SetValue = function(selfTog, val)
                         selfTog.Value = val == true
+                        local grad = checkBox:FindFirstChildOfClass("UIGradient")
+                        if selfTog.Value then
+                            if not grad then
+                                grad = Library:ApplyGradient(checkBox, { Library.AccentDeep, Library.Accent }, 0)
+                            end
+                        elseif grad then
+                            grad:Destroy()
+                        end
                         Library:Tween(checkBox, 0.15, {
                             BackgroundColor3 = selfTog.Value and Library.Accent or Library.GlassElement,
-                            BackgroundTransparency = selfTog.Value and 0 or 0.2
+                            BackgroundTransparency = selfTog.Value and 0 or 0.1
                         })
+                        Library:Tween(knob, 0.18, {
+                            Position = selfTog.Value and UDim2.new(1, -14, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
+                        }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                         Library:Tween(titleBtn, 0.15, {
                             TextColor3 = selfTog.Value and Library.TextColor or Library.SubTextColor
                         })
@@ -1432,12 +1559,14 @@ function Library:CreateWindow(config)
                     Library:RegisterColor(cpPopup, "BackgroundColor3", "SolidPopup")
 
                     local pCorner = Instance.new("UICorner")
-                    pCorner.CornerRadius = UDim.new(0, 6)
+                    pCorner.CornerRadius = UDim.new(0, 10)
                     pCorner.Parent = cpPopup
 
                     local pStroke = Instance.new("UIStroke")
                     pStroke.Color = Library.GlassBorder
                     pStroke.Parent = cpPopup
+
+                    Library:AddShadow(cpPopup, { Transparency = 0.45, Spread = 26, YOffset = 4 })
 
                     Library:RegisterColor(pStroke, "Color", "GlassBorder")
 
@@ -1665,32 +1794,66 @@ function Library:CreateWindow(config)
                 Library:RegisterColor(valLabel, "TextColor3", "SubTextColor")
 
                 local track = Instance.new("TextButton")
-                track.Size = UDim2.new(1, 0, 0, 8)
-                track.Position = UDim2.new(0, 0, 0, 22)
+                track.Size = UDim2.new(1, 0, 0, 6)
+                track.Position = UDim2.new(0, 0, 0, 24)
                 track.BackgroundColor3 = Library.GlassElement
-                track.BackgroundTransparency = 0.2
+                track.BackgroundTransparency = 0.1
                 track.BorderSizePixel = 0
                 track.Text = ""
                 track.AutoButtonColor = false
+                track.ClipsDescendants = false
                 track.Parent = row
 
                 Library:RegisterColor(track, "BackgroundColor3", "GlassElement")
 
                 local tCorner = Instance.new("UICorner")
-                tCorner.CornerRadius = UDim.new(0, 4)
+                tCorner.CornerRadius = UDim.new(1, 0)
                 tCorner.Parent = track
 
+                local tStroke = Instance.new("UIStroke")
+                tStroke.Color = Library.GlassBorderSoft
+                tStroke.Transparency = 0.4
+                tStroke.Parent = track
+
+                Library:RegisterColor(tStroke, "Color", "GlassBorderSoft")
+
+                local initialRatio = math.clamp((def - min) / (max - min), 0, 1)
+
                 local fill = Instance.new("Frame")
-                fill.Size = UDim2.new(math.clamp((def - min) / (max - min), 0, 1), 0, 1, 0)
+                fill.Size = UDim2.new(initialRatio, 0, 1, 0)
                 fill.BackgroundColor3 = Library.Accent
                 fill.BorderSizePixel = 0
+                fill.ZIndex = 1
                 fill.Parent = track
 
                 Library:RegisterColor(fill, "BackgroundColor3", "Accent")
+                Library:ApplyGradient(fill, { Library.AccentDeep, Library.Accent, Library.AccentSecondary }, 0)
 
                 local fCorner = Instance.new("UICorner")
-                fCorner.CornerRadius = UDim.new(0, 4)
+                fCorner.CornerRadius = UDim.new(1, 0)
                 fCorner.Parent = fill
+
+                local knob = Instance.new("Frame")
+                knob.Name = "Knob"
+                knob.Size = UDim2.new(0, 14, 0, 14)
+                knob.AnchorPoint = Vector2.new(0.5, 0.5)
+                knob.Position = UDim2.new(initialRatio, 0, 0.5, 0)
+                knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                knob.BorderSizePixel = 0
+                knob.ZIndex = 3
+                knob.Parent = track
+
+                local knobCorner = Instance.new("UICorner")
+                knobCorner.CornerRadius = UDim.new(1, 0)
+                knobCorner.Parent = knob
+
+                local knobRing = Instance.new("UIStroke")
+                knobRing.Color = Library.Accent
+                knobRing.Thickness = 2
+                knobRing.Parent = knob
+
+                Library:RegisterColor(knobRing, "Color", "Accent")
+                Library:AddShadow(knob, { Transparency = 0.55, Spread = 12, YOffset = 2 })
 
                 local SliderObj = {
                     Value = def,
@@ -1702,6 +1865,7 @@ function Library:CreateWindow(config)
                         valLabel.Text = tostring(val) .. suffix
                         local ratio = math.clamp((val - min) / (max - min), 0, 1)
                         Library:Tween(fill, 0.08, { Size = UDim2.new(ratio, 0, 1, 0) })
+                        Library:Tween(knob, 0.08, { Position = UDim2.new(ratio, 0, 0.5, 0) })
                         task.spawn(callback, val)
                     end
                 }
@@ -1782,7 +1946,7 @@ function Library:CreateWindow(config)
                 Library:RegisterColor(mainBtn, "TextColor3", "TextColor")
 
                 local bCorner = Instance.new("UICorner")
-                bCorner.CornerRadius = UDim.new(0, 4)
+                bCorner.CornerRadius = UDim.new(0, 6)
                 bCorner.Parent = mainBtn
 
                 local bStroke = Instance.new("UIStroke")
@@ -1818,12 +1982,14 @@ function Library:CreateWindow(config)
                 Library:RegisterColor(listFrame, "BackgroundColor3", "SolidPopup")
 
                 local lCorner = Instance.new("UICorner")
-                lCorner.CornerRadius = UDim.new(0, 4)
+                lCorner.CornerRadius = UDim.new(0, 8)
                 lCorner.Parent = listFrame
 
                 local lStroke = Instance.new("UIStroke")
                 lStroke.Color = Library.GlassBorder
                 lStroke.Parent = listFrame
+
+                Library:AddShadow(listFrame, { Transparency = 0.45, Spread = 24, YOffset = 4 })
 
                 Library:RegisterColor(lStroke, "Color", "GlassBorder")
 
@@ -1951,7 +2117,7 @@ function Library:CreateWindow(config)
                 Library:RegisterColor(textBox, "PlaceholderColor3", "SubTextColor")
 
                 local tbCorner = Instance.new("UICorner")
-                tbCorner.CornerRadius = UDim.new(0, 4)
+                tbCorner.CornerRadius = UDim.new(0, 6)
                 tbCorner.Parent = textBox
 
                 local tbStroke = Instance.new("UIStroke")
@@ -2011,7 +2177,7 @@ function Library:CreateWindow(config)
                 Library:RegisterColor(btn, "TextColor3", "TextColor")
 
                 local bCorner = Instance.new("UICorner")
-                bCorner.CornerRadius = UDim.new(0, 4)
+                bCorner.CornerRadius = UDim.new(0, 6)
                 bCorner.Parent = btn
 
                 local bStroke = Instance.new("UIStroke")
@@ -2021,10 +2187,12 @@ function Library:CreateWindow(config)
                 Library:RegisterColor(bStroke, "Color", "GlassBorderSoft")
 
                 btn.MouseEnter:Connect(function()
-                    Library:Tween(btn, 0.12, { BackgroundColor3 = Library.GlassBorder, BackgroundTransparency = 0.1 })
+                    Library:Tween(btn, 0.12, { BackgroundColor3 = Library.Accent, BackgroundTransparency = 0 })
+                    Library:Tween(bStroke, 0.12, { Color = Library.Accent })
                 end)
                 btn.MouseLeave:Connect(function()
                     Library:Tween(btn, 0.12, { BackgroundColor3 = Library.GlassElement, BackgroundTransparency = 0.2 })
+                    Library:Tween(bStroke, 0.12, { Color = Library.GlassBorderSoft })
                 end)
                 btn.MouseButton1Click:Connect(function()
                     Library:Animate(btn, "Pop")
