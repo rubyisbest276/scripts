@@ -1,6 +1,6 @@
--- [[ Ruby UI Library - Complete Glassmorphic Engine ]]
--- Fixed: Sidebar clipping & tab overflowing down the screen
--- Features: Frosted Glass UI, Dynamic Columns, Key System, Chaining, Config & Theme
+-- [[ Ruby UI Library - Complete Glassmorphic Engine with Lucide Icon Support ]]
+-- Architecture: Window -> Tab -> Groupbox (Left/Right) -> Controls
+-- Supported Icons: Lucide Icon Names ("swords", "flame", "eye", etc.) OR Roblox Asset ID ("rbxassetid://...")
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -35,15 +35,15 @@ end
 local Library = {
     Name = "RubyUI",
     Open = true,
-    Accent = Color3.fromRGB(255, 45, 85),          -- Neon Ruby Pink
-    GlassBg = Color3.fromRGB(16, 17, 23),         -- Deep Frosted Base
-    GlassSidebar = Color3.fromRGB(12, 13, 18),    -- Dark Tint Sidebar
-    GlassSection = Color3.fromRGB(22, 24, 32),    -- Glass Card
-    GlassElement = Color3.fromRGB(28, 30, 42),    -- Input/Slider Base
-    GlassBorder = Color3.fromRGB(65, 70, 92),     -- Subtle Glass Highlight Border
-    GlassBorderSoft = Color3.fromRGB(40, 44, 58), -- Dim Inner Border
-    TextColor = Color3.fromRGB(245, 247, 252),
-    SubTextColor = Color3.fromRGB(145, 150, 170),
+    Accent = Color3.fromRGB(250, 44, 83),          -- Vivid Ruby Rose
+    GlassBg = Color3.fromRGB(15, 16, 22),         -- Deep Frosted Base
+    GlassSidebar = Color3.fromRGB(11, 12, 17),    -- Dark Sidebar Tint
+    GlassSection = Color3.fromRGB(20, 22, 30),    -- Translucent Element Card
+    GlassElement = Color3.fromRGB(26, 28, 38),    -- Input & Slider Base
+    GlassBorder = Color3.fromRGB(60, 65, 85),     -- Glass Edge Highlight
+    GlassBorderSoft = Color3.fromRGB(36, 40, 52), -- Muted Sub-border
+    TextColor = Color3.fromRGB(245, 245, 250),
+    SubTextColor = Color3.fromRGB(140, 144, 165),
     Font = Enum.Font.GothamMedium,
     FontBold = Enum.Font.GothamBold,
     UnloadCallbacks = {},
@@ -52,7 +52,86 @@ local Library = {
     ScreenGui = nil,
     MainWindow = nil,
     NotificationContainer = nil,
+    LucideCache = {},
 }
+
+-- Built-in Lucide Fallback Table
+local BuiltInLucide = {
+    ["swords"] = "rbxassetid://10709791437",
+    ["sword"] = "rbxassetid://10709791281",
+    ["crosshair"] = "rbxassetid://10709769841",
+    ["shield"] = "rbxassetid://10723346959",
+    ["flame"] = "rbxassetid://10709775963",
+    ["eye"] = "rbxassetid://10723345518",
+    ["activity"] = "rbxassetid://10709752035",
+    ["globe"] = "rbxassetid://10723343321",
+    ["settings"] = "rbxassetid://10734950309",
+    ["box"] = "rbxassetid://10709759764",
+    ["user"] = "rbxassetid://10747373176",
+    ["users"] = "rbxassetid://10747373426",
+    ["zap"] = "rbxassetid://10734996996",
+    ["terminal"] = "rbxassetid://10747372431",
+    ["code"] = "rbxassetid://10709768704",
+    ["compass"] = "rbxassetid://10709769317",
+    ["search"] = "rbxassetid://10734883986",
+    ["file-text"] = "rbxassetid://10723346158",
+    ["folder"] = "rbxassetid://10723346376",
+    ["bell"] = "rbxassetid://10709756155",
+    ["lock"] = "rbxassetid://10723346593",
+    ["key"] = "rbxassetid://10723346487",
+    ["trash"] = "rbxassetid://10747373059",
+    ["save"] = "rbxassetid://10734883598",
+    ["sliders"] = "rbxassetid://10734950857",
+    ["mouse-pointer"] = "rbxassetid://10734884248",
+    ["cross"] = "rbxassetid://10709769993"
+}
+
+-- Lucide / Asset Resolver
+local function ResolveIcon(iconInput)
+    if not iconInput or iconInput == "" then return "" end
+    iconInput = tostring(iconInput)
+
+    -- Case 1: Direct Asset ID or URL
+    if iconInput:find("rbxassetid://") or iconInput:find("http://") or iconInput:find("https://") then
+        return iconInput
+    end
+    if tonumber(iconInput) then
+        return "rbxassetid://" .. iconInput
+    end
+
+    -- Case 2: Clean Lucide Name Resolver
+    local cleanName = iconInput:lower():gsub("^lucide%-", ""):gsub("_", "-")
+
+    -- Check Memory Cache
+    if Library.LucideCache[cleanName] then
+        return Library.LucideCache[cleanName]
+    end
+
+    -- Check Built-in Fallbacks
+    if BuiltInLucide[cleanName] then
+        Library.LucideCache[cleanName] = BuiltInLucide[cleanName]
+        return BuiltInLucide[cleanName]
+    end
+
+    -- Fetch from external Lucide index if available
+    local success, assetId = pcall(function()
+        if game.HttpGet then
+            local json = game:HttpGet("https://raw.githubusercontent.com/Footagesus/lucide-roblox/main/icons.json")
+            local parsed = HttpService:JSONDecode(json)
+            if parsed and parsed[cleanName] then
+                return "rbxassetid://" .. tostring(parsed[cleanName])
+            end
+        end
+        return nil
+    end)
+
+    if success and assetId then
+        Library.LucideCache[cleanName] = assetId
+        return assetId
+    end
+
+    return "rbxassetid://10709759764" -- Safe fallback (Box icon)
+end
 
 local SaveManager = {
     Folder = "RubyLibraryConfigs",
@@ -65,12 +144,12 @@ local ThemeManager = {
     Folder = "RubyLibraryThemes",
     Library = Library,
     BuiltInThemes = {
-        ["Ruby Rose"] = Color3.fromRGB(255, 45, 85),
-        ["Amethyst Violet"] = Color3.fromRGB(160, 90, 255),
-        ["Cyber Cyan"] = Color3.fromRGB(0, 225, 255),
-        ["Emerald Glow"] = Color3.fromRGB(46, 220, 120),
-        ["Solar Amber"] = Color3.fromRGB(255, 170, 25),
-        ["Pure White"] = Color3.fromRGB(240, 240, 245),
+        ["Ruby Rose"] = Color3.fromRGB(250, 44, 83),
+        ["Amethyst Violet"] = Color3.fromRGB(155, 89, 255),
+        ["Cyber Cyan"] = Color3.fromRGB(0, 230, 255),
+        ["Emerald Glow"] = Color3.fromRGB(46, 213, 115),
+        ["Solar Amber"] = Color3.fromRGB(255, 165, 2),
+        ["Minimalist Snow"] = Color3.fromRGB(240, 240, 245),
     }
 }
 
@@ -86,8 +165,8 @@ end
 
 function Library:Animate(object, animType)
     if animType == "Pop" then
-        object.Size = object.Size - UDim2.new(0, 3, 0, 3)
-        Library:Tween(object, 0.15, { Size = object.Size + UDim2.new(0, 3, 0, 3) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        object.Size = object.Size - UDim2.new(0, 4, 0, 4)
+        Library:Tween(object, 0.15, { Size = object.Size + UDim2.new(0, 4, 0, 4) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     elseif animType == "Pulse" then
         local originalColor = object.BackgroundColor3
         Library:Tween(object, 0.1, { BackgroundColor3 = Library.Accent })
@@ -238,7 +317,7 @@ function Library:Unload()
 end
 
 -- =========================================================================
--- NOTIFICATIONS
+-- NOTIFICATION SYSTEM
 -- =========================================================================
 function Library:Notify(message, duration)
     duration = duration or 3
@@ -302,17 +381,17 @@ function Library:Notify(message, duration)
 end
 
 -- =========================================================================
--- OPTIONAL KEY SYSTEM (GLASSMORPHIC)
+-- OPTIONAL KEY SYSTEM
 -- =========================================================================
 function Library:InitKeySystem(config)
     config = config or {}
-    local Title = config.Title or "AUTHENTICATION"
+    local Title = config.Title or "Key Verification"
     local TargetKey = config.Key or "RUBY-2026-KEY"
     local DiscordUrl = config.Discord or "https://discord.gg/"
     local OnSuccess = config.OnSuccess or function() end
 
     local ScreenGui = self.ScreenGui or Instance.new("ScreenGui")
-    ScreenGui.Name = "RubyKeyGui"
+    ScreenGui.Name = "RubyKeySystemGui"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.DisplayOrder = 1100
@@ -321,8 +400,8 @@ function Library:InitKeySystem(config)
 
     local KeyFrame = Instance.new("Frame")
     KeyFrame.Name = "KeyModal"
-    KeyFrame.Size = UDim2.new(0, 370, 0, 230)
-    KeyFrame.Position = UDim2.new(0.5, -185, 0.5, -115)
+    KeyFrame.Size = UDim2.new(0, 360, 0, 220)
+    KeyFrame.Position = UDim2.new(0.5, -180, 0.5, -110)
     KeyFrame.BackgroundColor3 = self.GlassBg
     KeyFrame.BackgroundTransparency = 0.1
     KeyFrame.BorderSizePixel = 0
@@ -336,7 +415,6 @@ function Library:InitKeySystem(config)
     local stroke = Instance.new("UIStroke")
     stroke.Color = self.GlassBorder
     stroke.Thickness = 1.2
-    stroke.Transparency = 0.2
     stroke.Parent = KeyFrame
 
     local isDrag, dragStart, startPos
@@ -369,8 +447,8 @@ function Library:InitKeySystem(config)
     topGlow.Parent = KeyFrame
 
     local kTitle = Instance.new("TextLabel")
-    kTitle.Size = UDim2.new(1, -24, 0, 26)
-    kTitle.Position = UDim2.new(0, 16, 0, 16)
+    kTitle.Size = UDim2.new(1, -24, 0, 30)
+    kTitle.Position = UDim2.new(0, 16, 0, 14)
     kTitle.BackgroundTransparency = 1
     kTitle.Font = self.FontBold
     kTitle.Text = Title
@@ -381,10 +459,10 @@ function Library:InitKeySystem(config)
 
     local kSub = Instance.new("TextLabel")
     kSub.Size = UDim2.new(1, -24, 0, 16)
-    kSub.Position = UDim2.new(0, 16, 0, 44)
+    kSub.Position = UDim2.new(0, 16, 0, 42)
     kSub.BackgroundTransparency = 1
     kSub.Font = self.Font
-    kSub.Text = "Enter license key to unlock system access"
+    kSub.Text = "Please enter your access license key to continue"
     kSub.TextColor3 = self.SubTextColor
     kSub.TextSize = 11
     kSub.TextXAlignment = Enum.TextXAlignment.Left
@@ -392,12 +470,12 @@ function Library:InitKeySystem(config)
 
     local inputField = Instance.new("TextBox")
     inputField.Size = UDim2.new(1, -32, 0, 36)
-    inputField.Position = UDim2.new(0, 16, 0, 78)
+    inputField.Position = UDim2.new(0, 16, 0, 76)
     inputField.BackgroundColor3 = self.GlassElement
     inputField.BackgroundTransparency = 0.2
     inputField.BorderSizePixel = 0
     inputField.Font = self.Font
-    inputField.PlaceholderText = "Paste license key here..."
+    inputField.PlaceholderText = "Paste License Key..."
     inputField.PlaceholderColor3 = self.SubTextColor
     inputField.Text = ""
     inputField.TextColor3 = self.TextColor
@@ -414,12 +492,12 @@ function Library:InitKeySystem(config)
     inputStroke.Parent = inputField
 
     local verifyBtn = Instance.new("TextButton")
-    verifyBtn.Size = UDim2.new(1, -32, 0, 36)
-    verifyBtn.Position = UDim2.new(0, 16, 0, 126)
+    verifyBtn.Size = UDim2.new(1, -32, 0, 34)
+    verifyBtn.Position = UDim2.new(0, 16, 0, 122)
     verifyBtn.BackgroundColor3 = self.Accent
     verifyBtn.BorderSizePixel = 0
     verifyBtn.Font = self.FontBold
-    verifyBtn.Text = "VERIFY LICENSE"
+    verifyBtn.Text = "AUTHENTICATE"
     verifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     verifyBtn.TextSize = 12
     verifyBtn.AutoButtonColor = false
@@ -431,10 +509,10 @@ function Library:InitKeySystem(config)
 
     local discordBtn = Instance.new("TextButton")
     discordBtn.Size = UDim2.new(1, -32, 0, 24)
-    discordBtn.Position = UDim2.new(0, 16, 0, 172)
+    discordBtn.Position = UDim2.new(0, 16, 0, 164)
     discordBtn.BackgroundTransparency = 1
     discordBtn.Font = self.Font
-    discordBtn.Text = "Need a key? Click to copy Discord invitation link"
+    discordBtn.Text = "Get key via Discord link (Click to copy)"
     discordBtn.TextColor3 = self.SubTextColor
     discordBtn.TextSize = 11
     discordBtn.Parent = KeyFrame
@@ -448,18 +526,18 @@ function Library:InitKeySystem(config)
 
     verifyBtn.MouseButton1Click:Connect(function()
         if inputField.Text == TargetKey then
-            verifyBtn.Text = "ACCESS AUTHORIZED"
+            verifyBtn.Text = "ACCESS GRANTED"
             Library:Tween(verifyBtn, 0.2, { BackgroundColor3 = Color3.fromRGB(46, 213, 115) })
-            task.wait(0.4)
-            Library:Tween(KeyFrame, 0.25, { Size = UDim2.new(0, 370, 0, 0), Position = KeyFrame.Position + UDim2.new(0, 0, 0, 115) })
+            task.wait(0.5)
+            Library:Tween(KeyFrame, 0.25, { Size = UDim2.new(0, 360, 0, 0), Position = KeyFrame.Position + UDim2.new(0, 0, 0, 110) })
             task.wait(0.28)
             KeyFrame:Destroy()
             OnSuccess()
         else
             verifyBtn.Text = "INVALID KEY"
-            Library:Tween(verifyBtn, 0.15, { BackgroundColor3 = Color3.fromRGB(220, 45, 60) })
+            Library:Tween(verifyBtn, 0.15, { BackgroundColor3 = Color3.fromRGB(200, 40, 40) })
             task.delay(1, function()
-                verifyBtn.Text = "VERIFY LICENSE"
+                verifyBtn.Text = "AUTHENTICATE"
                 Library:Tween(verifyBtn, 0.2, { BackgroundColor3 = Library.Accent })
             end)
         end
@@ -467,7 +545,7 @@ function Library:InitKeySystem(config)
 end
 
 -- =========================================================================
--- MAIN WINDOW CREATION (GLASSMORPHIC & CLIPPING FIXED)
+-- MAIN WINDOW CREATION
 -- =========================================================================
 function Library:CreateWindow(config)
     config = config or {}
@@ -500,7 +578,7 @@ function Library:CreateWindow(config)
     notifLayout.Parent = notifContainer
     self.NotificationContainer = notifContainer
 
-    -- Outer Frosted Glass Window
+    -- Outer Glass Window
     local MainWindow = Instance.new("Frame")
     MainWindow.Name = "RubyMainWindow"
     MainWindow.Size = UDim2.new(0, 720, 0, 490)
@@ -510,10 +588,10 @@ function Library:CreateWindow(config)
         MainWindow.Position = UDim2.new(0, 100, 0, 100)
     end
     MainWindow.BackgroundColor3 = self.GlassBg
-    MainWindow.BackgroundTransparency = 0.12 -- Glass Acrylic Look
+    MainWindow.BackgroundTransparency = 0.15 -- True Frosted Glass Look
     MainWindow.BorderSizePixel = 0
     MainWindow.Visible = AutoShow
-    MainWindow.ClipsDescendants = true -- Prevents content overflow
+    MainWindow.ClipsDescendants = true -- Prevents content leaking outside
     MainWindow.Parent = ScreenGui
     self.MainWindow = MainWindow
 
@@ -563,14 +641,14 @@ function Library:CreateWindow(config)
     end)
     table.insert(self.Connections, dragMoveConn)
 
-    -- Top Accent Border
+    -- Accent Top Strip
     local topAccent = Instance.new("Frame")
     topAccent.Size = UDim2.new(1, 0, 0, 2)
     topAccent.BackgroundColor3 = self.Accent
     topAccent.BorderSizePixel = 0
     topAccent.Parent = MainWindow
 
-    -- Title & Subtitle
+    -- Title Labels
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleText"
     titleLabel.Size = UDim2.new(0, 200, 1, 0)
@@ -607,7 +685,7 @@ function Library:CreateWindow(config)
     headerLine.Parent = MainWindow
 
     -- =========================================================================
-    -- FIXED SIDEBAR (NOW CONFINED PERFECTLY WITHIN WINDOW)
+    -- FIXED SIDEBAR (CONFINED & SCROLLABLE CONTAINER)
     -- =========================================================================
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
@@ -624,7 +702,7 @@ function Library:CreateWindow(config)
     sidebarScroll.Size = UDim2.new(1, 0, 1, 0)
     sidebarScroll.BackgroundTransparency = 1
     sidebarScroll.BorderSizePixel = 0
-    sidebarScroll.ScrollBarThickness = 0 -- Clean Invisible Scroll
+    sidebarScroll.ScrollBarThickness = 0
     sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     sidebarScroll.Parent = sidebar
 
@@ -651,9 +729,7 @@ function Library:CreateWindow(config)
     sidebarDivider.BorderSizePixel = 0
     sidebarDivider.Parent = MainWindow
 
-    -- =========================================================================
-    -- TAB VIEWS CONTAINER
-    -- =========================================================================
+    -- Viewport Container
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabViews"
     tabContainer.Size = UDim2.new(1, -151, 1, -72)
@@ -712,14 +788,16 @@ function Library:CreateWindow(config)
     end
 
     -- =========================================================================
-    -- TAB BUILDER
+    -- TAB IMPLEMENTATION (WITH RESOLVED ICON)
     -- =========================================================================
-    function WindowObj:AddTab(tabName, iconId)
+    function WindowObj:AddTab(tabName, iconInput)
         local Tab = {
             Name = tabName,
             LeftGroupboxes = {},
             RightGroupboxes = {},
         }
+
+        local finalIcon = ResolveIcon(iconInput)
 
         local tabButton = Instance.new("TextButton")
         tabButton.Name = "TabBtn_" .. tabName
@@ -735,12 +813,12 @@ function Library:CreateWindow(config)
         btnCorner.Parent = tabButton
 
         local iconImg = nil
-        if iconId and iconId ~= "" then
+        if finalIcon and finalIcon ~= "" then
             iconImg = Instance.new("ImageLabel")
-            iconImg.Size = UDim2.new(0, 16, 0, 16)
+            iconImg.Size = UDim2.new(0, 15, 0, 15)
             iconImg.Position = UDim2.new(0, 8, 0.5, -8)
             iconImg.BackgroundTransparency = 1
-            iconImg.Image = tostring(iconId)
+            iconImg.Image = finalIcon
             iconImg.ImageColor3 = Library.SubTextColor
             iconImg.Parent = tabButton
         end
@@ -768,7 +846,7 @@ function Library:CreateWindow(config)
         abCorner.CornerRadius = UDim.new(0, 2)
         abCorner.Parent = activeBar
 
-        -- Dual-Column Scroll Body
+        -- Scrollable Tab View Frame
         local tabScroll = Instance.new("ScrollingFrame")
         tabScroll.Name = "Scroll_" .. tabName
         tabScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -867,7 +945,7 @@ function Library:CreateWindow(config)
             gb.Name = "Groupbox_" .. groupTitle
             gb.Size = UDim2.new(1, 0, 0, 0)
             gb.BackgroundColor3 = Library.GlassSection
-            gb.BackgroundTransparency = 0.35 -- Translucent Glass Depth
+            gb.BackgroundTransparency = 0.35
             gb.BorderSizePixel = 0
             gb.Parent = parentContainer
 
