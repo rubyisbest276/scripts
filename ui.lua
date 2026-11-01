@@ -85,6 +85,7 @@ local Library = {
 
 local function InitLucideAPI()
     local endpoints = {
+        "https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau",
         "https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/a2c3063cc1e54db522dac4ab837b0a35a0da5ed0/icons.lua"
     }
 
