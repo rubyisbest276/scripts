@@ -59,6 +59,7 @@ local Library = {
     GlassSidebar = Color3.fromRGB(11, 12, 17),
     GlassSection = Color3.fromRGB(20, 22, 30),
     GlassElement = Color3.fromRGB(26, 28, 38),
+    SolidPopup = Color3.fromRGB(18, 20, 27),
     GlassBorder = Color3.fromRGB(60, 65, 85),
     GlassBorderSoft = Color3.fromRGB(36, 40, 52),
     TextColor = Color3.fromRGB(245, 245, 250),
@@ -1244,14 +1245,14 @@ function Library:CreateWindow(config)
                     local cpPopup = Instance.new("Frame")
                     cpPopup.Name = "ColorPopup_" .. tostring(cpId)
                     cpPopup.Size = UDim2.new(0, 170, 0, 155)
-                    cpPopup.BackgroundColor3 = Library.GlassSection
-                    cpPopup.BackgroundTransparency = 0.05
+                    cpPopup.BackgroundColor3 = Library.SolidPopup
+                    cpPopup.BackgroundTransparency = 0
                     cpPopup.BorderSizePixel = 0
                     cpPopup.Visible = false
                     cpPopup.Parent = Library.PopupGui
 
                     cpPopup:SetAttribute("OpenerBtn", cpBtn)
-                    Library:RegisterColor(cpPopup, "BackgroundColor3", "GlassSection")
+                    Library:RegisterColor(cpPopup, "BackgroundColor3", "SolidPopup")
 
                     local pCorner = Instance.new("UICorner")
                     pCorner.CornerRadius = UDim.new(0, 6)
@@ -1629,15 +1630,15 @@ function Library:CreateWindow(config)
                 local listFrame = Instance.new("Frame")
                 listFrame.Name = "DropdownOverlayList_" .. tostring(id)
                 listFrame.Size = UDim2.new(0, 100, 0, 0)
-                listFrame.BackgroundColor3 = Library.GlassSection
-                listFrame.BackgroundTransparency = 0.05
+                listFrame.BackgroundColor3 = Library.SolidPopup
+                listFrame.BackgroundTransparency = 0
                 listFrame.BorderSizePixel = 0
                 listFrame.Visible = false
                 listFrame.ClipsDescendants = true
                 listFrame.Parent = Library.PopupGui
 
                 listFrame:SetAttribute("OpenerBtn", mainBtn)
-                Library:RegisterColor(listFrame, "BackgroundColor3", "GlassSection")
+                Library:RegisterColor(listFrame, "BackgroundColor3", "SolidPopup")
 
                 local lCorner = Instance.new("UICorner")
                 lCorner.CornerRadius = UDim.new(0, 4)
@@ -1671,17 +1672,26 @@ function Library:CreateWindow(config)
                         for _, opt in ipairs(newVals) do
                             local optBtn = Instance.new("TextButton")
                             optBtn.Size = UDim2.new(1, 0, 0, 22)
-                            optBtn.BackgroundColor3 = Library.GlassSection
-                            optBtn.BackgroundTransparency = 0.2
+                            optBtn.BackgroundColor3 = Library.SolidPopup
+                            optBtn.BackgroundTransparency = 0
                             optBtn.BorderSizePixel = 0
                             optBtn.Font = Library.Font
                             optBtn.Text = "  " .. tostring(opt)
                             optBtn.TextColor3 = (opt == selfDd.Value) and Library.Accent or Library.TextColor
                             optBtn.TextSize = 11
                             optBtn.TextXAlignment = Enum.TextXAlignment.Left
+                            optBtn.AutoButtonColor = false
                             optBtn.Parent = listFrame
 
                             Library:RegisterText(optBtn, false)
+                            Library:RegisterColor(optBtn, "BackgroundColor3", "SolidPopup")
+
+                            optBtn.MouseEnter:Connect(function()
+                                optBtn.BackgroundColor3 = Library.GlassElement
+                            end)
+                            optBtn.MouseLeave:Connect(function()
+                                optBtn.BackgroundColor3 = Library.SolidPopup
+                            end)
 
                             optBtn.MouseButton1Click:Connect(function()
                                 selfDd:SetValue(opt)
