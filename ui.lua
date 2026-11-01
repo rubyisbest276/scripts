@@ -1,6 +1,6 @@
--- [[ Ruby UI Library - Complete Fixed & Enhanced Build ]]
--- Fixes: Groupbox / Control placement inside Columns, Canvas auto-expansion
--- Features: Clean Neon Glassmorphism, Advanced Tweens, Key System, Chaining System
+-- [[ Ruby UI Library - Complete Glassmorphic Engine ]]
+-- Fixed: Sidebar clipping & tab overflowing down the screen
+-- Features: Frosted Glass UI, Dynamic Columns, Key System, Chaining, Config & Theme
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -10,7 +10,6 @@ local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Safe GUI Container
 local function GetSafeGuiParent()
     local success, parent = pcall(function()
         if gethui then return gethui() end
@@ -36,14 +35,15 @@ end
 local Library = {
     Name = "RubyUI",
     Open = true,
-    Accent = Color3.fromRGB(250, 44, 83),        -- Vivid Ruby Rose
-    Background = Color3.fromRGB(15, 16, 20),     -- Deep Graphite
-    Sidebar = Color3.fromRGB(20, 21, 26),        -- Dark Slate
-    SectionBg = Color3.fromRGB(24, 25, 32),      -- Element Container
-    ElementBg = Color3.fromRGB(18, 19, 24),      -- Input/Track Background
-    Border = Color3.fromRGB(38, 40, 52),         -- Crisp Outline
-    TextColor = Color3.fromRGB(245, 245, 250),
-    SubTextColor = Color3.fromRGB(140, 144, 165),
+    Accent = Color3.fromRGB(255, 45, 85),          -- Neon Ruby Pink
+    GlassBg = Color3.fromRGB(16, 17, 23),         -- Deep Frosted Base
+    GlassSidebar = Color3.fromRGB(12, 13, 18),    -- Dark Tint Sidebar
+    GlassSection = Color3.fromRGB(22, 24, 32),    -- Glass Card
+    GlassElement = Color3.fromRGB(28, 30, 42),    -- Input/Slider Base
+    GlassBorder = Color3.fromRGB(65, 70, 92),     -- Subtle Glass Highlight Border
+    GlassBorderSoft = Color3.fromRGB(40, 44, 58), -- Dim Inner Border
+    TextColor = Color3.fromRGB(245, 247, 252),
+    SubTextColor = Color3.fromRGB(145, 150, 170),
     Font = Enum.Font.GothamMedium,
     FontBold = Enum.Font.GothamBold,
     UnloadCallbacks = {},
@@ -65,12 +65,12 @@ local ThemeManager = {
     Folder = "RubyLibraryThemes",
     Library = Library,
     BuiltInThemes = {
-        ["Ruby Rose"] = Color3.fromRGB(250, 44, 83),
-        ["Amethyst Violet"] = Color3.fromRGB(155, 89, 255),
-        ["Cyber Cyan"] = Color3.fromRGB(0, 230, 255),
-        ["Emerald Glow"] = Color3.fromRGB(46, 213, 115),
-        ["Solar Amber"] = Color3.fromRGB(255, 165, 2),
-        ["Minimalist Snow"] = Color3.fromRGB(240, 240, 245),
+        ["Ruby Rose"] = Color3.fromRGB(255, 45, 85),
+        ["Amethyst Violet"] = Color3.fromRGB(160, 90, 255),
+        ["Cyber Cyan"] = Color3.fromRGB(0, 225, 255),
+        ["Emerald Glow"] = Color3.fromRGB(46, 220, 120),
+        ["Solar Amber"] = Color3.fromRGB(255, 170, 25),
+        ["Pure White"] = Color3.fromRGB(240, 240, 245),
     }
 }
 
@@ -86,8 +86,8 @@ end
 
 function Library:Animate(object, animType)
     if animType == "Pop" then
-        object.Size = object.Size - UDim2.new(0, 4, 0, 4)
-        Library:Tween(object, 0.15, { Size = object.Size + UDim2.new(0, 4, 0, 4) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        object.Size = object.Size - UDim2.new(0, 3, 0, 3)
+        Library:Tween(object, 0.15, { Size = object.Size + UDim2.new(0, 3, 0, 3) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     elseif animType == "Pulse" then
         local originalColor = object.BackgroundColor3
         Library:Tween(object, 0.1, { BackgroundColor3 = Library.Accent })
@@ -152,7 +152,6 @@ local function KeyMatches(keyA, keyB)
     return false
 end
 
--- Global Input Listeners (NO RenderStepped, purely event-driven)
 local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and Options.MenuKeybind then
         local menuKey = Options.MenuKeybind.Value
@@ -239,18 +238,18 @@ function Library:Unload()
 end
 
 -- =========================================================================
--- NOTIFICATION SYSTEM
+-- NOTIFICATIONS
 -- =========================================================================
-function Library:Notify(message, duration, posType)
+function Library:Notify(message, duration)
     duration = duration or 3
     if not self.NotificationContainer then return end
 
     local notifFrame = Instance.new("Frame")
     notifFrame.Name = "Toast"
     notifFrame.Size = UDim2.new(1, 0, 0, 38)
-    notifFrame.BackgroundColor3 = self.SectionBg
-    notifFrame.BorderSizePixel = 0
+    notifFrame.BackgroundColor3 = self.GlassSection
     notifFrame.BackgroundTransparency = 1
+    notifFrame.BorderSizePixel = 0
     notifFrame.Parent = self.NotificationContainer
 
     local corner = Instance.new("UICorner")
@@ -258,13 +257,13 @@ function Library:Notify(message, duration, posType)
     corner.Parent = notifFrame
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color = self.Border
+    stroke.Color = self.GlassBorder
     stroke.Transparency = 1
     stroke.Parent = notifFrame
 
     local accentBar = Instance.new("Frame")
     accentBar.Size = UDim2.new(0, 3, 1, -12)
-    accentBar.Position = UDim2.new(0, 6, 0.5, -13)
+    accentBar.Position = UDim2.new(0, 8, 0.5, -13)
     accentBar.BackgroundColor3 = self.Accent
     accentBar.BorderSizePixel = 0
     accentBar.BackgroundTransparency = 1
@@ -275,8 +274,8 @@ function Library:Notify(message, duration, posType)
     barCorner.Parent = accentBar
 
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, -26, 1, 0)
-    textLabel.Position = UDim2.new(0, 16, 0, 0)
+    textLabel.Size = UDim2.new(1, -28, 1, 0)
+    textLabel.Position = UDim2.new(0, 18, 0, 0)
     textLabel.BackgroundTransparency = 1
     textLabel.Font = self.Font
     textLabel.Text = tostring(message)
@@ -286,8 +285,8 @@ function Library:Notify(message, duration, posType)
     textLabel.TextTransparency = 1
     textLabel.Parent = notifFrame
 
-    Library:Tween(notifFrame, 0.25, { BackgroundTransparency = 0 })
-    Library:Tween(stroke, 0.25, { Transparency = 0 })
+    Library:Tween(notifFrame, 0.25, { BackgroundTransparency = 0.15 })
+    Library:Tween(stroke, 0.25, { Transparency = 0.3 })
     Library:Tween(accentBar, 0.25, { BackgroundTransparency = 0 })
     Library:Tween(textLabel, 0.25, { TextTransparency = 0 })
 
@@ -303,17 +302,17 @@ function Library:Notify(message, duration, posType)
 end
 
 -- =========================================================================
--- OPTIONAL KEY SYSTEM
+-- OPTIONAL KEY SYSTEM (GLASSMORPHIC)
 -- =========================================================================
 function Library:InitKeySystem(config)
     config = config or {}
-    local Title = config.Title or "Key Verification"
+    local Title = config.Title or "AUTHENTICATION"
     local TargetKey = config.Key or "RUBY-2026-KEY"
     local DiscordUrl = config.Discord or "https://discord.gg/"
     local OnSuccess = config.OnSuccess or function() end
 
     local ScreenGui = self.ScreenGui or Instance.new("ScreenGui")
-    ScreenGui.Name = "RubyKeySystemGui"
+    ScreenGui.Name = "RubyKeyGui"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.DisplayOrder = 1100
@@ -322,9 +321,10 @@ function Library:InitKeySystem(config)
 
     local KeyFrame = Instance.new("Frame")
     KeyFrame.Name = "KeyModal"
-    KeyFrame.Size = UDim2.new(0, 360, 0, 220)
-    KeyFrame.Position = UDim2.new(0.5, -180, 0.5, -110)
-    KeyFrame.BackgroundColor3 = self.Background
+    KeyFrame.Size = UDim2.new(0, 370, 0, 230)
+    KeyFrame.Position = UDim2.new(0.5, -185, 0.5, -115)
+    KeyFrame.BackgroundColor3 = self.GlassBg
+    KeyFrame.BackgroundTransparency = 0.1
     KeyFrame.BorderSizePixel = 0
     KeyFrame.ClipsDescendants = true
     KeyFrame.Parent = ScreenGui
@@ -334,11 +334,11 @@ function Library:InitKeySystem(config)
     corner.Parent = KeyFrame
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color = self.Border
+    stroke.Color = self.GlassBorder
     stroke.Thickness = 1.2
+    stroke.Transparency = 0.2
     stroke.Parent = KeyFrame
 
-    -- Dragging
     local isDrag, dragStart, startPos
     KeyFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -369,8 +369,8 @@ function Library:InitKeySystem(config)
     topGlow.Parent = KeyFrame
 
     local kTitle = Instance.new("TextLabel")
-    kTitle.Size = UDim2.new(1, -24, 0, 30)
-    kTitle.Position = UDim2.new(0, 16, 0, 14)
+    kTitle.Size = UDim2.new(1, -24, 0, 26)
+    kTitle.Position = UDim2.new(0, 16, 0, 16)
     kTitle.BackgroundTransparency = 1
     kTitle.Font = self.FontBold
     kTitle.Text = Title
@@ -381,10 +381,10 @@ function Library:InitKeySystem(config)
 
     local kSub = Instance.new("TextLabel")
     kSub.Size = UDim2.new(1, -24, 0, 16)
-    kSub.Position = UDim2.new(0, 16, 0, 42)
+    kSub.Position = UDim2.new(0, 16, 0, 44)
     kSub.BackgroundTransparency = 1
     kSub.Font = self.Font
-    kSub.Text = "Please enter your access license key to continue"
+    kSub.Text = "Enter license key to unlock system access"
     kSub.TextColor3 = self.SubTextColor
     kSub.TextSize = 11
     kSub.TextXAlignment = Enum.TextXAlignment.Left
@@ -392,11 +392,12 @@ function Library:InitKeySystem(config)
 
     local inputField = Instance.new("TextBox")
     inputField.Size = UDim2.new(1, -32, 0, 36)
-    inputField.Position = UDim2.new(0, 16, 0, 76)
-    inputField.BackgroundColor3 = self.ElementBg
+    inputField.Position = UDim2.new(0, 16, 0, 78)
+    inputField.BackgroundColor3 = self.GlassElement
+    inputField.BackgroundTransparency = 0.2
     inputField.BorderSizePixel = 0
     inputField.Font = self.Font
-    inputField.PlaceholderText = "Paste License Key..."
+    inputField.PlaceholderText = "Paste license key here..."
     inputField.PlaceholderColor3 = self.SubTextColor
     inputField.Text = ""
     inputField.TextColor3 = self.TextColor
@@ -409,16 +410,16 @@ function Library:InitKeySystem(config)
     inputCorner.Parent = inputField
 
     local inputStroke = Instance.new("UIStroke")
-    inputStroke.Color = self.Border
+    inputStroke.Color = self.GlassBorderSoft
     inputStroke.Parent = inputField
 
     local verifyBtn = Instance.new("TextButton")
-    verifyBtn.Size = UDim2.new(1, -32, 0, 34)
-    verifyBtn.Position = UDim2.new(0, 16, 0, 122)
+    verifyBtn.Size = UDim2.new(1, -32, 0, 36)
+    verifyBtn.Position = UDim2.new(0, 16, 0, 126)
     verifyBtn.BackgroundColor3 = self.Accent
     verifyBtn.BorderSizePixel = 0
     verifyBtn.Font = self.FontBold
-    verifyBtn.Text = "AUTHENTICATE"
+    verifyBtn.Text = "VERIFY LICENSE"
     verifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     verifyBtn.TextSize = 12
     verifyBtn.AutoButtonColor = false
@@ -430,10 +431,10 @@ function Library:InitKeySystem(config)
 
     local discordBtn = Instance.new("TextButton")
     discordBtn.Size = UDim2.new(1, -32, 0, 24)
-    discordBtn.Position = UDim2.new(0, 16, 0, 164)
+    discordBtn.Position = UDim2.new(0, 16, 0, 172)
     discordBtn.BackgroundTransparency = 1
     discordBtn.Font = self.Font
-    discordBtn.Text = "Get key via Discord link (Click to copy)"
+    discordBtn.Text = "Need a key? Click to copy Discord invitation link"
     discordBtn.TextColor3 = self.SubTextColor
     discordBtn.TextSize = 11
     discordBtn.Parent = KeyFrame
@@ -447,18 +448,18 @@ function Library:InitKeySystem(config)
 
     verifyBtn.MouseButton1Click:Connect(function()
         if inputField.Text == TargetKey then
-            verifyBtn.Text = "ACCESS GRANTED"
+            verifyBtn.Text = "ACCESS AUTHORIZED"
             Library:Tween(verifyBtn, 0.2, { BackgroundColor3 = Color3.fromRGB(46, 213, 115) })
-            task.wait(0.5)
-            Library:Tween(KeyFrame, 0.25, { Size = UDim2.new(0, 360, 0, 0), Position = KeyFrame.Position + UDim2.new(0, 0, 0, 110) })
+            task.wait(0.4)
+            Library:Tween(KeyFrame, 0.25, { Size = UDim2.new(0, 370, 0, 0), Position = KeyFrame.Position + UDim2.new(0, 0, 0, 115) })
             task.wait(0.28)
             KeyFrame:Destroy()
             OnSuccess()
         else
             verifyBtn.Text = "INVALID KEY"
-            Library:Tween(verifyBtn, 0.15, { BackgroundColor3 = Color3.fromRGB(200, 40, 40) })
+            Library:Tween(verifyBtn, 0.15, { BackgroundColor3 = Color3.fromRGB(220, 45, 60) })
             task.delay(1, function()
-                verifyBtn.Text = "AUTHENTICATE"
+                verifyBtn.Text = "VERIFY LICENSE"
                 Library:Tween(verifyBtn, 0.2, { BackgroundColor3 = Library.Accent })
             end)
         end
@@ -466,13 +467,13 @@ function Library:InitKeySystem(config)
 end
 
 -- =========================================================================
--- MAIN WINDOW CREATION
+-- MAIN WINDOW CREATION (GLASSMORPHIC & CLIPPING FIXED)
 -- =========================================================================
 function Library:CreateWindow(config)
     config = config or {}
-    local TitleText = config.Title or "RUBY ENGINE"
-    local SubTitleText = config.SubTitle or "External V3"
-    local FooterText = config.Footer or "Ruby Framework | Universal"
+    local TitleText = config.Title or "EXTERNAL V2"
+    local SubTitleText = config.SubTitle or "UNIVERSAL"
+    local FooterText = config.Footer or "Build 2026.11 | Daegu"
     local Center = config.Center ~= false
     local AutoShow = config.AutoShow ~= false
 
@@ -487,8 +488,8 @@ function Library:CreateWindow(config)
     -- Toast Stack
     local notifContainer = Instance.new("Frame")
     notifContainer.Name = "NotificationStack"
-    notifContainer.Size = UDim2.new(0, 260, 1, -40)
-    notifContainer.Position = UDim2.new(1, -276, 0, 20)
+    notifContainer.Size = UDim2.new(0, 270, 1, -40)
+    notifContainer.Position = UDim2.new(1, -286, 0, 20)
     notifContainer.BackgroundTransparency = 1
     notifContainer.Parent = ScreenGui
 
@@ -499,19 +500,20 @@ function Library:CreateWindow(config)
     notifLayout.Parent = notifContainer
     self.NotificationContainer = notifContainer
 
-    -- Outer Window Frame
+    -- Outer Frosted Glass Window
     local MainWindow = Instance.new("Frame")
     MainWindow.Name = "RubyMainWindow"
-    MainWindow.Size = UDim2.new(0, 700, 0, 490)
+    MainWindow.Size = UDim2.new(0, 720, 0, 490)
     if Center then
-        MainWindow.Position = UDim2.new(0.5, -350, 0.5, -245)
+        MainWindow.Position = UDim2.new(0.5, -360, 0.5, -245)
     else
         MainWindow.Position = UDim2.new(0, 100, 0, 100)
     end
-    MainWindow.BackgroundColor3 = self.Background
+    MainWindow.BackgroundColor3 = self.GlassBg
+    MainWindow.BackgroundTransparency = 0.12 -- Glass Acrylic Look
     MainWindow.BorderSizePixel = 0
     MainWindow.Visible = AutoShow
-    MainWindow.ClipsDescendants = false
+    MainWindow.ClipsDescendants = true -- Prevents content overflow
     MainWindow.Parent = ScreenGui
     self.MainWindow = MainWindow
 
@@ -520,8 +522,9 @@ function Library:CreateWindow(config)
     mainCorner.Parent = MainWindow
 
     local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color = self.Border
+    mainStroke.Color = self.GlassBorder
     mainStroke.Thickness = 1.2
+    mainStroke.Transparency = 0.25
     mainStroke.Parent = MainWindow
 
     -- Dragging Logic
@@ -560,18 +563,14 @@ function Library:CreateWindow(config)
     end)
     table.insert(self.Connections, dragMoveConn)
 
-    -- Top Accent Border Line
+    -- Top Accent Border
     local topAccent = Instance.new("Frame")
     topAccent.Size = UDim2.new(1, 0, 0, 2)
     topAccent.BackgroundColor3 = self.Accent
     topAccent.BorderSizePixel = 0
     topAccent.Parent = MainWindow
 
-    local topCorner = Instance.new("UICorner")
-    topCorner.CornerRadius = UDim.new(0, 8)
-    topCorner.Parent = topAccent
-
-    -- Title & Subtitle Labels
+    -- Title & Subtitle
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleText"
     titleLabel.Size = UDim2.new(0, 200, 1, 0)
@@ -603,53 +602,62 @@ function Library:CreateWindow(config)
     local headerLine = Instance.new("Frame")
     headerLine.Size = UDim2.new(1, 0, 0, 1)
     headerLine.Position = UDim2.new(0, 0, 0, 44)
-    headerLine.BackgroundColor3 = self.Border
+    headerLine.BackgroundColor3 = self.GlassBorderSoft
     headerLine.BorderSizePixel = 0
     headerLine.Parent = MainWindow
 
-    -- Sidebar (Tabs)
+    -- =========================================================================
+    -- FIXED SIDEBAR (NOW CONFINED PERFECTLY WITHIN WINDOW)
+    -- =========================================================================
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, 140, 1, -70)
+    sidebar.Size = UDim2.new(0, 150, 1, -72)
     sidebar.Position = UDim2.new(0, 0, 0, 45)
-    sidebar.BackgroundColor3 = self.Sidebar
+    sidebar.BackgroundColor3 = self.GlassSidebar
+    sidebar.BackgroundTransparency = 0.25
     sidebar.BorderSizePixel = 0
+    sidebar.ClipsDescendants = true
     sidebar.Parent = MainWindow
 
-    local sideCorner = Instance.new("UICorner")
-    sideCorner.CornerRadius = UDim.new(0, 8)
-    sideCorner.Parent = sidebar
-
-    local sideRightFill = Instance.new("Frame")
-    sideRightFill.Size = UDim2.new(0, 10, 1, 0)
-    sideRightFill.Position = UDim2.new(1, -10, 0, 0)
-    sideRightFill.BackgroundColor3 = self.Sidebar
-    sideRightFill.BorderSizePixel = 0
-    sideRightFill.Parent = sidebar
+    local sidebarScroll = Instance.new("ScrollingFrame")
+    sidebarScroll.Name = "SidebarScroll"
+    sidebarScroll.Size = UDim2.new(1, 0, 1, 0)
+    sidebarScroll.BackgroundTransparency = 1
+    sidebarScroll.BorderSizePixel = 0
+    sidebarScroll.ScrollBarThickness = 0 -- Clean Invisible Scroll
+    sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    sidebarScroll.Parent = sidebar
 
     local sidebarLayout = Instance.new("UIListLayout")
     sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
     sidebarLayout.Padding = UDim.new(0, 4)
-    sidebarLayout.Parent = sidebar
+    sidebarLayout.Parent = sidebarScroll
 
     local sidebarPad = Instance.new("UIPadding")
     sidebarPad.PaddingTop = UDim.new(0, 8)
-    sidebarPad.PaddingLeft = UDim.new(0, 6)
-    sidebarPad.PaddingRight = UDim.new(0, 6)
-    sidebarPad.Parent = sidebar
+    sidebarPad.PaddingBottom = UDim.new(0, 8)
+    sidebarPad.PaddingLeft = UDim.new(0, 8)
+    sidebarPad.PaddingRight = UDim.new(0, 8)
+    sidebarPad.Parent = sidebarScroll
+
+    sidebarLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        sidebarScroll.CanvasSize = UDim2.new(0, 0, 0, sidebarLayout.AbsoluteContentSize.Y + 16)
+    end)
 
     local sidebarDivider = Instance.new("Frame")
-    sidebarDivider.Size = UDim2.new(0, 1, 1, -70)
-    sidebarDivider.Position = UDim2.new(0, 140, 0, 45)
-    sidebarDivider.BackgroundColor3 = self.Border
+    sidebarDivider.Size = UDim2.new(0, 1, 1, -72)
+    sidebarDivider.Position = UDim2.new(0, 150, 0, 45)
+    sidebarDivider.BackgroundColor3 = self.GlassBorderSoft
     sidebarDivider.BorderSizePixel = 0
     sidebarDivider.Parent = MainWindow
 
-    -- Tab Viewport Container
+    -- =========================================================================
+    -- TAB VIEWS CONTAINER
+    -- =========================================================================
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabViews"
-    tabContainer.Size = UDim2.new(1, -141, 1, -70)
-    tabContainer.Position = UDim2.new(0, 141, 0, 45)
+    tabContainer.Size = UDim2.new(1, -151, 1, -72)
+    tabContainer.Position = UDim2.new(0, 151, 0, 45)
     tabContainer.BackgroundTransparency = 1
     tabContainer.ClipsDescendants = true
     tabContainer.Parent = MainWindow
@@ -657,15 +665,15 @@ function Library:CreateWindow(config)
     -- Footer
     local footerLine = Instance.new("Frame")
     footerLine.Size = UDim2.new(1, 0, 0, 1)
-    footerLine.Position = UDim2.new(0, 0, 1, -25)
-    footerLine.BackgroundColor3 = self.Border
+    footerLine.Position = UDim2.new(0, 0, 1, -27)
+    footerLine.BackgroundColor3 = self.GlassBorderSoft
     footerLine.BorderSizePixel = 0
     footerLine.Parent = MainWindow
 
     local footerLabel = Instance.new("TextLabel")
     footerLabel.Name = "FooterText"
-    footerLabel.Size = UDim2.new(1, -24, 0, 24)
-    footerLabel.Position = UDim2.new(0, 12, 1, -24)
+    footerLabel.Size = UDim2.new(1, -24, 0, 26)
+    footerLabel.Position = UDim2.new(0, 14, 1, -26)
     footerLabel.BackgroundTransparency = 1
     footerLabel.Font = self.Font
     footerLabel.Text = FooterText
@@ -674,7 +682,6 @@ function Library:CreateWindow(config)
     footerLabel.TextXAlignment = Enum.TextXAlignment.Left
     footerLabel.Parent = MainWindow
 
-    -- Register MenuKeybind
     Options.MenuKeybind = {
         Value = Enum.KeyCode.RightShift,
         Type = "KeyPicker",
@@ -693,9 +700,9 @@ function Library:CreateWindow(config)
         self.Open = not self.Open
         if self.Open then
             MainWindow.Visible = true
-            Library:Tween(MainWindow, 0.2, { Size = UDim2.new(0, 700, 0, 490) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            Library:Tween(MainWindow, 0.2, { Size = UDim2.new(0, 720, 0, 490) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         else
-            Library:Tween(MainWindow, 0.15, { Size = UDim2.new(0, 680, 0, 470) })
+            Library:Tween(MainWindow, 0.15, { Size = UDim2.new(0, 700, 0, 470) })
             task.delay(0.15, function()
                 if not self.Open then
                     MainWindow.Visible = false
@@ -704,9 +711,9 @@ function Library:CreateWindow(config)
         end
     end
 
-    -- =====================================================================
-    -- TAB IMPLEMENTATION
-    -- =====================================================================
+    -- =========================================================================
+    -- TAB BUILDER
+    -- =========================================================================
     function WindowObj:AddTab(tabName, iconId)
         local Tab = {
             Name = tabName,
@@ -717,11 +724,11 @@ function Library:CreateWindow(config)
         local tabButton = Instance.new("TextButton")
         tabButton.Name = "TabBtn_" .. tabName
         tabButton.Size = UDim2.new(1, 0, 0, 32)
-        tabButton.BackgroundColor3 = Library.SectionBg
+        tabButton.BackgroundColor3 = Library.GlassSection
         tabButton.BackgroundTransparency = 1
         tabButton.AutoButtonColor = false
         tabButton.Text = ""
-        tabButton.Parent = sidebar
+        tabButton.Parent = sidebarScroll
 
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 6)
@@ -730,8 +737,8 @@ function Library:CreateWindow(config)
         local iconImg = nil
         if iconId and iconId ~= "" then
             iconImg = Instance.new("ImageLabel")
-            iconImg.Size = UDim2.new(0, 14, 0, 14)
-            iconImg.Position = UDim2.new(0, 8, 0.5, -7)
+            iconImg.Size = UDim2.new(0, 16, 0, 16)
+            iconImg.Position = UDim2.new(0, 8, 0.5, -8)
             iconImg.BackgroundTransparency = 1
             iconImg.Image = tostring(iconId)
             iconImg.ImageColor3 = Library.SubTextColor
@@ -739,8 +746,8 @@ function Library:CreateWindow(config)
         end
 
         local tabTitle = Instance.new("TextLabel")
-        tabTitle.Size = UDim2.new(1, iconImg and -30 or -14, 1, 0)
-        tabTitle.Position = UDim2.new(0, iconImg and 28 or 10, 0, 0)
+        tabTitle.Size = UDim2.new(1, iconImg and -34 or -16, 1, 0)
+        tabTitle.Position = UDim2.new(0, iconImg and 32 or 12, 0, 0)
         tabTitle.BackgroundTransparency = 1
         tabTitle.Font = Library.Font
         tabTitle.Text = tabName
@@ -749,9 +756,8 @@ function Library:CreateWindow(config)
         tabTitle.TextXAlignment = Enum.TextXAlignment.Left
         tabTitle.Parent = tabButton
 
-        -- Active Indicator on Tab
         local activeBar = Instance.new("Frame")
-        activeBar.Size = UDim2.new(0, 2, 0, 16)
+        activeBar.Size = UDim2.new(0, 3, 0, 16)
         activeBar.Position = UDim2.new(0, 1, 0.5, -8)
         activeBar.BackgroundColor3 = Library.Accent
         activeBar.BorderSizePixel = 0
@@ -762,29 +768,29 @@ function Library:CreateWindow(config)
         abCorner.CornerRadius = UDim.new(0, 2)
         abCorner.Parent = activeBar
 
-        -- Fixed Tab Viewport & Dual-Column Structure
+        -- Dual-Column Scroll Body
         local tabScroll = Instance.new("ScrollingFrame")
         tabScroll.Name = "Scroll_" .. tabName
         tabScroll.Size = UDim2.new(1, 0, 1, 0)
         tabScroll.BackgroundTransparency = 1
         tabScroll.BorderSizePixel = 0
         tabScroll.ScrollBarThickness = 3
-        tabScroll.ScrollBarImageColor3 = Library.Border
+        tabScroll.ScrollBarImageColor3 = Library.GlassBorder
         tabScroll.Visible = false
         tabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
         tabScroll.Parent = tabContainer
 
         local pad = Instance.new("UIPadding")
         pad.PaddingTop = UDim.new(0, 10)
-        pad.PaddingBottom = UDim.new(0, 10)
-        pad.PaddingLeft = UDim.new(0, 10)
-        pad.PaddingRight = UDim.new(0, 10)
+        pad.PaddingBottom = UDim.new(0, 12)
+        pad.PaddingLeft = UDim.new(0, 12)
+        pad.PaddingRight = UDim.new(0, 12)
         pad.Parent = tabScroll
 
-        -- Left Column Container
+        -- Left Column
         local leftCol = Instance.new("Frame")
         leftCol.Name = "LeftColumn"
-        leftCol.Size = UDim2.new(0.5, -5, 0, 0)
+        leftCol.Size = UDim2.new(0.5, -6, 0, 0)
         leftCol.Position = UDim2.new(0, 0, 0, 0)
         leftCol.BackgroundTransparency = 1
         leftCol.Parent = tabScroll
@@ -794,11 +800,11 @@ function Library:CreateWindow(config)
         leftLayout.Padding = UDim.new(0, 10)
         leftLayout.Parent = leftCol
 
-        -- Right Column Container
+        -- Right Column
         local rightCol = Instance.new("Frame")
         rightCol.Name = "RightColumn"
-        rightCol.Size = UDim2.new(0.5, -5, 0, 0)
-        rightCol.Position = UDim2.new(0.5, 5, 0, 0)
+        rightCol.Size = UDim2.new(0.5, -6, 0, 0)
+        rightCol.Position = UDim2.new(0.5, 6, 0, 0)
         rightCol.BackgroundTransparency = 1
         rightCol.Parent = tabScroll
 
@@ -807,14 +813,13 @@ function Library:CreateWindow(config)
         rightLayout.Padding = UDim.new(0, 10)
         rightLayout.Parent = rightCol
 
-        -- CRITICAL FIX: Dynamic Scroll Height recalculation
         local function UpdateCanvas()
             local leftH = leftLayout.AbsoluteContentSize.Y
             local rightH = rightLayout.AbsoluteContentSize.Y
             local maxH = math.max(leftH, rightH) + 30
             tabScroll.CanvasSize = UDim2.new(0, 0, 0, maxH)
-            leftCol.Size = UDim2.new(0.5, -5, 0, leftH)
-            rightCol.Size = UDim2.new(0.5, 5, 0, rightH)
+            leftCol.Size = UDim2.new(0.5, -6, 0, leftH)
+            rightCol.Size = UDim2.new(0.5, 6, 0, rightH)
         end
 
         leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvas)
@@ -831,7 +836,7 @@ function Library:CreateWindow(config)
                 end
             end
             tabScroll.Visible = true
-            Library:Tween(tabButton, 0.15, { BackgroundTransparency = 0 })
+            Library:Tween(tabButton, 0.15, { BackgroundTransparency = 0.25 })
             Library:Tween(tabTitle, 0.15, { TextColor3 = Library.TextColor })
             Library:Tween(activeBar, 0.15, { BackgroundTransparency = 0 })
             if iconImg then
@@ -855,13 +860,14 @@ function Library:CreateWindow(config)
         end
 
         -- =================================================================
-        -- GROUPBOX CONSTRUCTOR (FIXED NESTING & AUTO-SIZING)
+        -- GROUPBOX CONSTRUCTOR (GLASS CARDS)
         -- =================================================================
         local function CreateGroupbox(parentContainer, groupTitle)
             local gb = Instance.new("Frame")
             gb.Name = "Groupbox_" .. groupTitle
             gb.Size = UDim2.new(1, 0, 0, 0)
-            gb.BackgroundColor3 = Library.SectionBg
+            gb.BackgroundColor3 = Library.GlassSection
+            gb.BackgroundTransparency = 0.35 -- Translucent Glass Depth
             gb.BorderSizePixel = 0
             gb.Parent = parentContainer
 
@@ -870,8 +876,9 @@ function Library:CreateWindow(config)
             gbCorner.Parent = gb
 
             local gbStroke = Instance.new("UIStroke")
-            gbStroke.Color = Library.Border
+            gbStroke.Color = Library.GlassBorder
             gbStroke.Thickness = 1
+            gbStroke.Transparency = 0.35
             gbStroke.Parent = gb
 
             local header = Instance.new("Frame")
@@ -894,11 +901,10 @@ function Library:CreateWindow(config)
             local line = Instance.new("Frame")
             line.Size = UDim2.new(1, 0, 0, 1)
             line.Position = UDim2.new(0, 0, 0, 26)
-            line.BackgroundColor3 = Library.Border
+            line.BackgroundColor3 = Library.GlassBorderSoft
             line.BorderSizePixel = 0
             line.Parent = gb
 
-            -- Controls Container inside Groupbox
             local container = Instance.new("Frame")
             container.Name = "Container"
             container.Size = UDim2.new(1, 0, 0, 0)
@@ -918,7 +924,6 @@ function Library:CreateWindow(config)
             listPad.PaddingRight = UDim.new(0, 10)
             listPad.Parent = container
 
-            -- Recalculate Groupbox Frame Height based on items
             local function UpdateGbHeight()
                 local innerH = listLayout.AbsoluteContentSize.Y + 16
                 container.Size = UDim2.new(1, 0, 0, innerH)
@@ -951,7 +956,8 @@ function Library:CreateWindow(config)
                 local checkBox = Instance.new("TextButton")
                 checkBox.Size = UDim2.new(0, 16, 0, 16)
                 checkBox.Position = UDim2.new(0, 0, 0.5, -8)
-                checkBox.BackgroundColor3 = state and Library.Accent or Library.ElementBg
+                checkBox.BackgroundColor3 = state and Library.Accent or Library.GlassElement
+                checkBox.BackgroundTransparency = state and 0 or 0.2
                 checkBox.BorderSizePixel = 0
                 checkBox.Text = ""
                 checkBox.AutoButtonColor = false
@@ -962,7 +968,7 @@ function Library:CreateWindow(config)
                 cbCorner.Parent = checkBox
 
                 local cbStroke = Instance.new("UIStroke")
-                cbStroke.Color = Library.Border
+                cbStroke.Color = Library.GlassBorderSoft
                 cbStroke.Parent = checkBox
 
                 local titleBtn = Instance.new("TextButton")
@@ -1000,7 +1006,8 @@ function Library:CreateWindow(config)
                     SetValue = function(selfTog, val)
                         selfTog.Value = val == true
                         Library:Tween(checkBox, 0.15, {
-                            BackgroundColor3 = selfTog.Value and Library.Accent or Library.ElementBg
+                            BackgroundColor3 = selfTog.Value and Library.Accent or Library.GlassElement,
+                            BackgroundTransparency = selfTog.Value and 0 or 0.2
                         })
                         Library:Tween(titleBtn, 0.15, {
                             TextColor3 = selfTog.Value and Library.TextColor or Library.SubTextColor
@@ -1022,7 +1029,6 @@ function Library:CreateWindow(config)
                     Options[id] = ToggleObj
                 end
 
-                -- Chaining Interface
                 local ChainWrapper = { Toggle = ToggleObj }
 
                 function ChainWrapper:AddColorPicker(cpId, cpCfg)
@@ -1045,15 +1051,15 @@ function Library:CreateWindow(config)
                     cCorner.Parent = cpBtn
 
                     local cStroke = Instance.new("UIStroke")
-                    cStroke.Color = Library.Border
+                    cStroke.Color = Library.GlassBorder
                     cStroke.Parent = cpBtn
 
-                    -- Popup Frame
                     local cpPopup = Instance.new("Frame")
                     cpPopup.Name = "Popup"
                     cpPopup.Size = UDim2.new(0, 170, 0, 155)
                     cpPopup.Position = UDim2.new(1, 10, 0, 0)
-                    cpPopup.BackgroundColor3 = Library.SectionBg
+                    cpPopup.BackgroundColor3 = Library.GlassSection
+                    cpPopup.BackgroundTransparency = 0.05
                     cpPopup.BorderSizePixel = 0
                     cpPopup.Visible = false
                     cpPopup.ZIndex = 60
@@ -1064,7 +1070,7 @@ function Library:CreateWindow(config)
                     pCorner.Parent = cpPopup
 
                     local pStroke = Instance.new("UIStroke")
-                    pStroke.Color = Library.Border
+                    pStroke.Color = Library.GlassBorder
                     pStroke.Parent = cpPopup
 
                     local pTitle = Instance.new("TextLabel")
@@ -1184,7 +1190,8 @@ function Library:CreateWindow(config)
                         local kpBtn = Instance.new("TextButton")
                         kpBtn.Name = "KeyBtn_" .. tostring(kpId)
                         kpBtn.Size = UDim2.new(0, 44, 0, 16)
-                        kpBtn.BackgroundColor3 = Library.ElementBg
+                        kpBtn.BackgroundColor3 = Library.GlassElement
+                        kpBtn.BackgroundTransparency = 0.2
                         kpBtn.BorderSizePixel = 0
                         kpBtn.Font = Library.Font
                         kpBtn.Text = "[" .. ConvertKeyCodeToString(kpDef) .. "]"
@@ -1274,7 +1281,8 @@ function Library:CreateWindow(config)
                 local track = Instance.new("TextButton")
                 track.Size = UDim2.new(1, 0, 0, 8)
                 track.Position = UDim2.new(0, 0, 0, 22)
-                track.BackgroundColor3 = Library.ElementBg
+                track.BackgroundColor3 = Library.GlassElement
+                track.BackgroundTransparency = 0.2
                 track.BorderSizePixel = 0
                 track.Text = ""
                 track.AutoButtonColor = false
@@ -1340,7 +1348,7 @@ function Library:CreateWindow(config)
             end
 
             -- =============================================================
-            -- 3. DROPDOWN (Single Selection)
+            -- 3. DROPDOWN
             -- =============================================================
             function Groupbox:AddDropdown(id, cfg)
                 cfg = cfg or {}
@@ -1368,7 +1376,8 @@ function Library:CreateWindow(config)
                 local mainBtn = Instance.new("TextButton")
                 mainBtn.Size = UDim2.new(1, 0, 0, 24)
                 mainBtn.Position = UDim2.new(0, 0, 0, 20)
-                mainBtn.BackgroundColor3 = Library.ElementBg
+                mainBtn.BackgroundColor3 = Library.GlassElement
+                mainBtn.BackgroundTransparency = 0.2
                 mainBtn.BorderSizePixel = 0
                 mainBtn.Font = Library.Font
                 mainBtn.Text = "  " .. tostring(def)
@@ -1383,7 +1392,7 @@ function Library:CreateWindow(config)
                 bCorner.Parent = mainBtn
 
                 local bStroke = Instance.new("UIStroke")
-                bStroke.Color = Library.Border
+                bStroke.Color = Library.GlassBorderSoft
                 bStroke.Parent = mainBtn
 
                 local arrow = Instance.new("TextLabel")
@@ -1400,7 +1409,8 @@ function Library:CreateWindow(config)
                 listFrame.Name = "DropList"
                 listFrame.Size = UDim2.new(1, 0, 0, 0)
                 listFrame.Position = UDim2.new(0, 0, 1, 4)
-                listFrame.BackgroundColor3 = Library.SectionBg
+                listFrame.BackgroundColor3 = Library.GlassSection
+                listFrame.BackgroundTransparency = 0.05
                 listFrame.BorderSizePixel = 0
                 listFrame.Visible = false
                 listFrame.ZIndex = 50
@@ -1412,7 +1422,7 @@ function Library:CreateWindow(config)
                 lCorner.Parent = listFrame
 
                 local lStroke = Instance.new("UIStroke")
-                lStroke.Color = Library.Border
+                lStroke.Color = Library.GlassBorder
                 lStroke.Parent = listFrame
 
                 local lLayout = Instance.new("UIListLayout")
@@ -1437,7 +1447,8 @@ function Library:CreateWindow(config)
                         for _, opt in ipairs(newVals) do
                             local optBtn = Instance.new("TextButton")
                             optBtn.Size = UDim2.new(1, 0, 0, 22)
-                            optBtn.BackgroundColor3 = Library.SectionBg
+                            optBtn.BackgroundColor3 = Library.GlassSection
+                            optBtn.BackgroundTransparency = 0.2
                             optBtn.BorderSizePixel = 0
                             optBtn.Font = Library.Font
                             optBtn.Text = "  " .. tostring(opt)
@@ -1500,7 +1511,8 @@ function Library:CreateWindow(config)
                 local textBox = Instance.new("TextBox")
                 textBox.Size = UDim2.new(1, 0, 0, 24)
                 textBox.Position = UDim2.new(0, 0, 0, 20)
-                textBox.BackgroundColor3 = Library.ElementBg
+                textBox.BackgroundColor3 = Library.GlassElement
+                textBox.BackgroundTransparency = 0.2
                 textBox.BorderSizePixel = 0
                 textBox.Font = Library.Font
                 textBox.Text = def
@@ -1516,7 +1528,7 @@ function Library:CreateWindow(config)
                 tbCorner.Parent = textBox
 
                 local tbStroke = Instance.new("UIStroke")
-                tbStroke.Color = Library.Border
+                tbStroke.Color = Library.GlassBorderSoft
                 tbStroke.Parent = textBox
 
                 local InputObj = {
@@ -1558,7 +1570,8 @@ function Library:CreateWindow(config)
                 local btn = Instance.new("TextButton")
                 btn.Name = "Btn_" .. text
                 btn.Size = UDim2.new(1, 0, 0, 26)
-                btn.BackgroundColor3 = Library.ElementBg
+                btn.BackgroundColor3 = Library.GlassElement
+                btn.BackgroundTransparency = 0.2
                 btn.BorderSizePixel = 0
                 btn.Font = Library.Font
                 btn.Text = text
@@ -1572,14 +1585,14 @@ function Library:CreateWindow(config)
                 bCorner.Parent = btn
 
                 local bStroke = Instance.new("UIStroke")
-                bStroke.Color = Library.Border
+                bStroke.Color = Library.GlassBorderSoft
                 bStroke.Parent = btn
 
                 btn.MouseEnter:Connect(function()
-                    Library:Tween(btn, 0.12, { BackgroundColor3 = Library.Border })
+                    Library:Tween(btn, 0.12, { BackgroundColor3 = Library.GlassBorder, BackgroundTransparency = 0.1 })
                 end)
                 btn.MouseLeave:Connect(function()
-                    Library:Tween(btn, 0.12, { BackgroundColor3 = Library.ElementBg })
+                    Library:Tween(btn, 0.12, { BackgroundColor3 = Library.GlassElement, BackgroundTransparency = 0.2 })
                 end)
                 btn.MouseButton1Click:Connect(function()
                     Library:Animate(btn, "Pop")
@@ -1646,7 +1659,8 @@ function Library:CreateWindow(config)
                         local kpBtn = Instance.new("TextButton")
                         kpBtn.Name = "KeyBtn_" .. tostring(kpId)
                         kpBtn.Size = UDim2.new(0, 44, 0, 16)
-                        kpBtn.BackgroundColor3 = Library.ElementBg
+                        kpBtn.BackgroundColor3 = Library.GlassElement
+                        kpBtn.BackgroundTransparency = 0.2
                         kpBtn.BorderSizePixel = 0
                         kpBtn.Font = Library.Font
                         kpBtn.Text = "[" .. ConvertKeyCodeToString(kpDef) .. "]"
