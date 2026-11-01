@@ -7,7 +7,7 @@
 `rubyui.lua`를 실행기에서 불러오면 `Library` 테이블이 반환됩니다.
 
 ```lua
-local Library = loadstring(game:HttpGet("https://your-host/rubyui.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/rubyisbest276/scripts/refs/heads/main/ui.lua"))()
 ```
 
 로컬 파일로 테스트 중이라면:
