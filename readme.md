@@ -1,53 +1,67 @@
-# Ruby UI Framework (v3.0.1)
+# Ruby UI
 
-로블록스 Luau 환경에 최적화된 다크 네온 글래스모피즘 UI 라이브러리입니다. 체이닝 패턴, 키바인드 감시 시스템, Config 저장/불러오기(SaveManager), 테마 매니저(ThemeManager), 그리고 선택형 키 시스템(Key System)을 기본 제공합니다.
+로블록스 Luau 환경 전용 글래스모피즘(Frosted Glass) UI 라이브러리입니다. Lucide 아이콘 및 Roblox 에셋 자동 리졸빙, 이중 스크롤 컬럼 구조, 체이닝 시스템, Keybind 감시 시스템, Config/Theme 매니저, 선택형 키 인증 모달을 지원합니다.
 
 ---
 
-## 1. 빠른 시작 (Quick Start)
+## 주요 기능
+
+* **프로스티드 글래스모피즘 (Frosted Glass UI)**: 반투명 아크릴 배경 계층과 얇은 글래스 하이라이트 보더
+* **Lucide & Roblox 에셋 자동 지원**: Lucide 아이콘 이름(`"swords"`, `"flame"`, `"eye"` 등) 또는 `"rbxassetid://..."` 형식 직접 입력 지원
+* **버그 없는 반응형 레이아웃**: 사이드바 탭 오버플로우 방지 및 좌/우 2열 자동 높이 계산(`CanvasSize`)
+* **객체 체이닝 패턴**: `Toggle:AddColorPicker():AddKeyPicker()`, `Label:AddKeyPicker()`
+* **내장 매니저**: Config 저장/불러오기(`SaveManager`), 테마 프리셋/커스텀 색상(`ThemeManager`)
+* **순수 이벤트 기반**: `RenderStepped`, `Heartbeat` 등을 사용하지 않아 외부 렌더 훅(Drawing ESP/FOV)과 충돌 없음
+
+---
+
+## 1. 시작하기 (Quick Start)
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/YourRepo/RubyUI/main/source.lua"))()
 
--- 최상위 윈도우 생성
+-- 메인 윈도우 생성
 local Window = Library:CreateWindow({
-    Title = "RUBY EXTERNAL",
-    SubTitle = "HYBRID SUITE",
-    Footer = "v3.0.1 | Stable Release",
+    Title = "EXTERNAL V2",
+    SubTitle = "UNIVERSAL",
+    Footer = "Build 2026.11 | Daegu",
     Center = true,     -- 화면 중앙 정렬
-    AutoShow = true    -- 생성 시 즉시 표시 여부
+    AutoShow = true    -- 로드 시 즉시 표시
 })
 
 ```
 
 ---
 
-## 2. 계층 구조 (Hierarchy)
+## 2. 탭 & 그룹박스 구성 (Tabs & Groupboxes)
 
-### 탭 생성 (`Window:AddTab`)
+### 탭 생성 (`AddTab`)
 
-최대 7개 이상의 탭을 지원하며, 탭 이름과 선택적 rbxassetid 아이콘을 지정합니다.
+아이콘 파라미터에는 **Lucide 아이콘 이름** 또는 **Roblox 에셋 ID**를 전달할 수 있습니다.
 
 ```lua
 local Tabs = {
-    Combat   = Window:AddTab("Combat", "rbxassetid://6031075938"),
-    Rage     = Window:AddTab("Rage", "rbxassetid://6034509993"),
-    Visuals  = Window:AddTab("Visuals", "rbxassetid://6034684937"),
-    Movement = Window:AddTab("Movement", "rbxassetid://6035047409"),
-    World    = Window:AddTab("World", "rbxassetid://6034310831"),
-    Misc     = Window:AddTab("Misc", "rbxassetid://6034509993"),
-    Settings = Window:AddTab("Settings", "rbxassetid://6031280882")
+    Combat   = Window:AddTab("Combat", "swords"),             -- Lucide 이름
+    Rage     = Window:AddTab("Rage", "flame"),
+    Visuals  = Window:AddTab("Visuals", "eye"),
+    Movement = Window:AddTab("Movement", "activity"),
+    World    = Window:AddTab("World", "globe"),
+    Misc     = Window:AddTab("Misc", "box"),
+    Settings = Window:AddTab("Settings", "rbxassetid://10734950309") -- Asset ID
 }
 
 ```
 
+> **지원하는 주요 Lucide 아이콘 키워드:**
+> `swords`, `sword`, `crosshair`, `shield`, `flame`, `eye`, `activity`, `globe`, `settings`, `box`, `user`, `users`, `zap`, `terminal`, `code`, `compass`, `search`, `file-text`, `folder`, `bell`, `lock`, `key`, `trash`, `save`, `sliders`, `mouse-pointer` 등
+
 ### 그룹박스 생성 (`AddLeftGroupbox` / `AddRightGroupbox`)
 
-각 탭 내부의 스크롤 컨테이너 안에서 좌우 2열 컬럼에 맞춰 생성됩니다.
+탭 내 좌/우 2열 컬럼에 맞춰 그룹박스를 배치합니다.
 
 ```lua
-local AimGroup   = Tabs.Combat:AddLeftGroupbox("Aimbot Settings")
-local VisualGroup = Tabs.Combat:AddRightGroupbox("Target Display")
+local MainCombat = Tabs.Combat:AddLeftGroupbox("Aimbot")
+local FovCombat  = Tabs.Combat:AddRightGroupbox("Target Display")
 
 ```
 
@@ -57,27 +71,27 @@ local VisualGroup = Tabs.Combat:AddRightGroupbox("Target Display")
 
 ### Toggle + 체이닝 (`AddColorPicker`, `AddKeyPicker`)
 
-토글 반환 객체에서 `:AddColorPicker` 및 `:AddKeyPicker`를 연속해서 체이닝할 수 있습니다.
+토글 객체 뒤에 `:AddColorPicker` 및 `:AddKeyPicker`를 연속으로 호출합니다.
 
 ```lua
-AimGroup:AddToggle("silent_aim", {
+MainCombat:AddToggle("silent_aim", {
     Text = "Silent Aim",
     Default = false,
     Callback = function(state)
-        print("Silent Aim 활성화 여부:", state)
+        print("Silent Aim:", state)
     end
-}):AddColorPicker("aim_fov_color", {
+}):AddColorPicker("aim_color", {
     Title = "FOV Visual Color",
     Default = Color3.fromRGB(250, 44, 83),
     Callback = function(color)
-        -- Drawing API FOV 원 색상 변경 연동
+        -- Drawing 원 색상 연동
     end
-}):AddKeyPicker("aim_keybind", {
+}):AddKeyPicker("aim_bind", {
     Default = "MB2",             -- 마우스 오른쪽 버튼 또는 Enum.KeyCode
     Mode = "Hold",               -- "Toggle" 또는 "Hold"
     SyncToggleState = true,      -- true일 경우 키 입력 상태가 부모 Toggle의 on/off와 동기화
     Callback = function(active)
-        print("키바인드 활성 상태:", active)
+        print("Aim Keybind Active:", active)
     end
 })
 
@@ -85,18 +99,18 @@ AimGroup:AddToggle("silent_aim", {
 
 ### Slider
 
-소수점 반올림(`Rounding`)과 단위 접미사(`Suffix`)를 지원합니다.
+소수점 반올림(`Rounding`)과 접미사(`Suffix`)를 지원합니다.
 
 ```lua
-AimGroup:AddSlider("aim_smoothness", {
-    Text = "Smoothness",
-    Default = 5,
-    Min = 1,
-    Max = 20,
-    Rounding = 1,
-    Suffix = "x",
+FovCombat:AddSlider("fov_radius", {
+    Text = "FOV Radius",
+    Default = 90,
+    Min = 10,
+    Max = 360,
+    Rounding = 0,
+    Suffix = " deg",
     Callback = function(value)
-        print("스무딩 값:", value)
+        -- FOV 크기 연동
     end
 })
 
@@ -104,15 +118,15 @@ AimGroup:AddSlider("aim_smoothness", {
 
 ### Dropdown (단일 선택)
 
-옵션 배열 및 갱신 API(`:SetValues`)를 지원합니다.
+옵션 배열 지정 및 동적 갱신 API(`:SetValues`)를 지원합니다.
 
 ```lua
-AimGroup:AddDropdown("target_hitbox", {
+MainCombat:AddDropdown("target_hitbox", {
     Text = "Target Hitbox",
     Values = { "Head", "UpperTorso", "HumanoidRootPart" },
     Default = "Head",
     Callback = function(selected)
-        print("선택된 부위:", selected)
+        print("Selected Hitbox:", selected)
     end
 })
 
@@ -120,16 +134,16 @@ AimGroup:AddDropdown("target_hitbox", {
 
 ### Input (TextBox)
 
-텍스트 엔터 입력 또는 포커스 아웃(`Finished`) 시 콜백을 트리거할 수 있습니다.
+포커스 아웃/엔터 입력 시 확정(`Finished = true`) 여부를 지정할 수 있습니다.
 
 ```lua
-AimGroup:AddInput("custom_target_name", {
-    Text = "Target Player Name",
+MainCombat:AddInput("player_whitelist", {
+    Text = "Whitelist Player",
     Default = "",
-    Placeholder = "플레이어 닉네임 입력...",
-    Finished = true,             -- true: 엔터/포커스 아웃 시 확정, false: 텍스트 변경마다 호출
+    Placeholder = "Enter username...",
+    Finished = true,
     Callback = function(text)
-        print("입력된 닉네임:", text)
+        print("Whitelisted:", text)
     end
 })
 
@@ -137,22 +151,20 @@ AimGroup:AddInput("custom_target_name", {
 
 ### Button & Label (+ KeyPicker 체이닝)
 
-버튼에는 팝 애니메이션이 내장되어 있으며, 라벨에도 키피커를 직접 연결할 수 있습니다.
-
 ```lua
-AimGroup:AddButton({
-    Text = "Reset All Hitboxes",
+MainCombat:AddButton({
+    Text = "Reset Config",
     Callback = function()
-        print("Hitbox 초기화 실행")
+        print("Reset executed")
     end
 })
 
-AimGroup:AddLabel("Panic Mode"):AddKeyPicker("panic_key", {
+MainCombat:AddLabel("Panic Button"):AddKeyPicker("panic_key", {
     Default = "X",
     Mode = "Toggle",
     Callback = function(active)
         if active then
-            print("긴급 패닉 모드 발동")
+            print("Panic mode enabled")
         end
     end
 })
@@ -163,99 +175,79 @@ AimGroup:AddLabel("Panic Mode"):AddKeyPicker("panic_key", {
 
 ## 4. 전역 접근 및 제어 (`Options` / `Toggles`)
 
-스크립트 내부 어디서든 고유 ID로 컨트롤의 인스턴스와 현재 값에 접근할 수 있습니다.
+스크립트 어디서든 생성 시 부여한 ID를 통해 인스턴스와 값에 접근할 수 있습니다.
 
 ```lua
 -- 값 읽기
 local isAimEnabled = Options.silent_aim.Value
-local fovColor = Options.aim_fov_color.Value
+local fovColor = Options.aim_color.Value
 
--- 코드 상에서 값 직접 업데이트 (UI 자동 갱신 및 콜백 발화)
+-- UI 값 변경 및 콜백 실행
 Options.silent_aim:SetValue(true)
-Options.aim_smoothness:SetValue(8.5)
+Options.fov_radius:SetValue(120)
 
--- 메뉴 토글 기본 키 (기본값: RightShift)
+-- 메뉴 토글 키 변경 (기본값: RightShift)
 Options.MenuKeybind:SetValue(Enum.KeyCode.Insert)
 
 ```
 
 ---
 
-## 5. 부가 시스템 (Managers)
+## 5. 부가 시스템 (SaveManager & ThemeManager)
 
-### Config 매니저 (`SaveManager`)
-
-지정한 탭(보통 Settings 탭)에 자동으로 JSON 저장/불러오기/덮어쓰기/자동로드 섹션을 빌드합니다.
+Settings 탭에 원클릭으로 Config 및 Theme 관리 섹션을 생성합니다.
 
 ```lua
 local SaveManager = Library.SaveManager
-
-SaveManager:SetLibrary(Library)
-SaveManager:SetFolder("RubyHubConfigs")
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" }) -- 저장 시 제외할 ID 설정
-
--- Settings 탭의 우측 열에 Config UI 자동 생성
-SaveManager:BuildConfigSection(Tabs.Settings)
-
--- 시작 시 지정된 자동 로드 파일이 있다면 즉시 적용
-SaveManager:LoadAutoloadConfig()
-
-```
-
-### Theme 매니저 (`ThemeManager`)
-
-프리셋 및 커스텀 악센트 색상 변경 UI를 탭에 자동 생성합니다.
-
-```lua
 local ThemeManager = Library.ThemeManager
 
+SaveManager:SetLibrary(Library)
 ThemeManager:SetLibrary(Library)
-ThemeManager:SetFolder("RubyHubThemes")
 
--- Settings 탭의 좌측 열에 Theme UI 자동 생성
-ThemeManager:ApplyToTab(Tabs.Settings)
+SaveManager:SetFolder("RubyHubSettings")
+ThemeManager:SetFolder("RubyHubSettings")
+
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+
+-- UI 섹션 생성
+ThemeManager:ApplyToTab(Tabs.Settings)       -- 좌측에 테마 설정 생성
+SaveManager:BuildConfigSection(Tabs.Settings) -- 우측에 Config 저장/로드 섹션 생성
+
+-- 이전 자동 로드 설정 불러오기
+SaveManager:LoadAutoloadConfig()
 
 ```
 
 ---
 
-## 6. 알림, 언로드 및 키 시스템 (Advanced)
+## 6. 키 시스템 및 언로드 훅 (Security & Cleanup)
 
-### 토스트 알림
+### 라이선스 키 시스템 (선택 옵션)
 
-```lua
-Library:Notify("모든 모듈이 정상 로드되었습니다.", 3)
-
-```
-
-### Unload 훅 (Drawing / 리소스 정리)
-
-라이브러리 언로드(`Library:Unload()`) 시 호출될 정리 콜백을 등록합니다. Drawing API나 외부 훅을 해제할 때 사용합니다.
-
-```lua
-Library:OnUnload(function()
-    -- 스크립트가 직접 생성한 Drawing FOV 원, ESP 박스 삭제
-    if FovCircle then
-        FovCircle:Remove()
-    end
-    print("UI 언로드 및 Drawing 리소스 해제 완료")
-end)
-
-```
-
-### 키 시스템 (선택 옵션)
-
-라이선스 키 검증 모달을 띄운 뒤 인증이 완료되면 메인 윈도우를 로드하도록 래핑할 수 있습니다.
+키 인증 성공 시 메인 창 빌드 함수를 호출하도록 분기합니다.
 
 ```lua
 Library:InitKeySystem({
-    Title = "RUBY SECURITY GATEWAY",
-    Key = "RUBY-AUTH-KEY-2026",
-    Discord = "https://discord.gg/yourserver",
+    Title = "AUTHENTICATION GATEWAY",
+    Key = "RUBY-PREMIUM-2026",
+    Discord = "https://discord.gg/yourhub",
     OnSuccess = function()
-        -- 인증 성공 시 실행할 메인 윈도우 빌드 함수 호출
         BuildMainWindow()
     end
 })
+
+```
+
+### 리소스 언로드 (`OnUnload`)
+
+스크립트 종료나 UI 파괴(`Library:Unload()`) 시 Drawing 객체 및 외부 루프를 정리합니다.
+
+```lua
+Library:OnUnload(function()
+    if MyDrawingCircle then
+        MyDrawingCircle:Remove()
+    end
+    print("UI 및 Drawing 리소스 정리 완료")
+end)
 
 ```
