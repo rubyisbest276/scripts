@@ -59,6 +59,8 @@ local Library = {
     AccentDeep = Color3.fromRGB(190, 20, 90),
     GlassBg = Color3.fromRGB(15, 16, 22),
     GlassSidebar = Color3.fromRGB(11, 12, 17),
+    SidebarItemBg = Color3.fromRGB(28, 30, 42),
+    SidebarTextColor = Color3.fromRGB(190, 194, 214),
     GlassSection = Color3.fromRGB(20, 22, 30),
     GlassElement = Color3.fromRGB(26, 28, 38),
     SolidPopup = Color3.fromRGB(18, 20, 27),
@@ -1013,7 +1015,7 @@ function Library:CreateWindow(config)
     sidebar.Size = UDim2.new(0, 150, 1, -72)
     sidebar.Position = UDim2.new(0, 0, 0, 45)
     sidebar.BackgroundColor3 = self.GlassSidebar
-    sidebar.BackgroundTransparency = 0.25
+    sidebar.BackgroundTransparency = 0.05
     sidebar.BorderSizePixel = 0
     sidebar.ClipsDescendants = true
     sidebar.Parent = MainWindow
@@ -1048,11 +1050,13 @@ function Library:CreateWindow(config)
     local sidebarDivider = Instance.new("Frame")
     sidebarDivider.Size = UDim2.new(0, 1, 1, -72)
     sidebarDivider.Position = UDim2.new(0, 150, 0, 45)
-    sidebarDivider.BackgroundColor3 = self.GlassBorderSoft
+    sidebarDivider.BackgroundColor3 = self.GlassBorder
+    sidebarDivider.BackgroundTransparency = 0.3
     sidebarDivider.BorderSizePixel = 0
+    sidebarDivider.ZIndex = 2
     sidebarDivider.Parent = MainWindow
 
-    Library:RegisterColor(sidebarDivider, "BackgroundColor3", "GlassBorderSoft")
+    Library:RegisterColor(sidebarDivider, "BackgroundColor3", "GlassBorder")
 
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabViews"
@@ -1125,37 +1129,45 @@ function Library:CreateWindow(config)
 
         local tabButton = Instance.new("TextButton")
         tabButton.Name = "TabBtn_" .. tabName
-        tabButton.Size = UDim2.new(1, 0, 0, 32)
-        tabButton.BackgroundColor3 = Library.GlassSection
-        tabButton.BackgroundTransparency = 1
+        tabButton.Size = UDim2.new(1, 0, 0, 34)
+        tabButton.BackgroundColor3 = Library.SidebarItemBg
+        tabButton.BackgroundTransparency = 0.82
         tabButton.AutoButtonColor = false
         tabButton.Text = ""
         tabButton.Parent = sidebarScroll
 
-        Library:RegisterColor(tabButton, "BackgroundColor3", "GlassSection")
+        Library:RegisterColor(tabButton, "BackgroundColor3", "SidebarItemBg")
 
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 8)
         btnCorner.Parent = tabButton
 
+        local tabStroke = Instance.new("UIStroke")
+        tabStroke.Color = Library.Accent
+        tabStroke.Thickness = 1
+        tabStroke.Transparency = 1
+        tabStroke.Parent = tabButton
+
+        Library:RegisterColor(tabStroke, "Color", "Accent")
+
         local iconImg = Instance.new("ImageLabel")
-        iconImg.Size = UDim2.new(0, 16, 0, 16)
-        iconImg.Position = UDim2.new(0, 8, 0.5, -8)
+        iconImg.Size = UDim2.new(0, 17, 0, 17)
+        iconImg.Position = UDim2.new(0, 9, 0.5, -8)
         iconImg.BackgroundTransparency = 1
-        iconImg.ImageColor3 = Library.SubTextColor
+        iconImg.ImageColor3 = Library.SidebarTextColor
         iconImg.Parent = tabButton
 
         local hasIcon = Library:ApplyIcon(iconImg, iconInput)
         iconImg.Visible = hasIcon
 
         local tabTitle = Instance.new("TextLabel")
-        tabTitle.Size = UDim2.new(1, hasIcon and -34 or -16, 1, 0)
-        tabTitle.Position = UDim2.new(0, hasIcon and 32 or 12, 0, 0)
+        tabTitle.Size = UDim2.new(1, hasIcon and -36 or -18, 1, 0)
+        tabTitle.Position = UDim2.new(0, hasIcon and 34 or 13, 0, 0)
         tabTitle.BackgroundTransparency = 1
         tabTitle.Font = Library.Font
         tabTitle.Text = tabName
-        tabTitle.TextColor3 = Library.SubTextColor
-        tabTitle.TextSize = 12
+        tabTitle.TextColor3 = Library.SidebarTextColor
+        tabTitle.TextSize = 12.5
         tabTitle.TextXAlignment = Enum.TextXAlignment.Left
         tabTitle.Parent = tabButton
 
@@ -1248,11 +1260,12 @@ function Library:CreateWindow(config)
                         oldView.Position = UDim2.new(0, 16, 0, 0)
                     end)
                 end
-                Library:Tween(t.Button, 0.15, { BackgroundTransparency = 1 })
-                Library:Tween(t.Label, 0.15, { TextColor3 = Library.SubTextColor })
+                Library:Tween(t.Button, 0.15, { BackgroundTransparency = 0.82 })
+                Library:Tween(t.Stroke, 0.15, { Transparency = 1 })
+                Library:Tween(t.Label, 0.15, { TextColor3 = Library.SidebarTextColor })
                 Library:Tween(t.ActiveBar, 0.15, { BackgroundTransparency = 1 })
                 if t.Icon and t.Icon.Visible then
-                    Library:Tween(t.Icon, 0.15, { ImageColor3 = Library.SubTextColor })
+                    Library:Tween(t.Icon, 0.15, { ImageColor3 = Library.SidebarTextColor })
                 end
             end
 
@@ -1260,7 +1273,8 @@ function Library:CreateWindow(config)
             tabScroll.Visible = true
             Library:Tween(tabScroll, 0.25, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-            Library:Tween(tabButton, 0.15, { BackgroundTransparency = 0.25 })
+            Library:Tween(tabButton, 0.15, { BackgroundTransparency = 0.08 })
+            Library:Tween(tabStroke, 0.15, { Transparency = 0.55 })
             Library:Tween(tabTitle, 0.15, { TextColor3 = Library.TextColor })
             Library:Tween(activeBar, 0.15, { BackgroundTransparency = 0 })
             if iconImg.Visible then
@@ -1274,17 +1288,26 @@ function Library:CreateWindow(config)
 
         tabButton.MouseEnter:Connect(function()
             if WindowObj.CurrentTab ~= Tab then
-                Library:Tween(tabButton, 0.12, { BackgroundTransparency = 0.7 })
+                Library:Tween(tabButton, 0.12, { BackgroundTransparency = 0.5 })
+                Library:Tween(tabTitle, 0.12, { TextColor3 = Library.TextColor })
+                if iconImg.Visible then
+                    Library:Tween(iconImg, 0.12, { ImageColor3 = Library.TextColor })
+                end
             end
         end)
         tabButton.MouseLeave:Connect(function()
             if WindowObj.CurrentTab ~= Tab then
-                Library:Tween(tabButton, 0.12, { BackgroundTransparency = 1 })
+                Library:Tween(tabButton, 0.12, { BackgroundTransparency = 0.82 })
+                Library:Tween(tabTitle, 0.12, { TextColor3 = Library.SidebarTextColor })
+                if iconImg.Visible then
+                    Library:Tween(iconImg, 0.12, { ImageColor3 = Library.SidebarTextColor })
+                end
             end
         end)
 
         Tab.View = tabScroll
         Tab.Button = tabButton
+        Tab.Stroke = tabStroke
         Tab.Label = tabTitle
         Tab.Icon = iconImg
         Tab.ActiveBar = activeBar
