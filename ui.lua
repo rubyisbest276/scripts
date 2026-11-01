@@ -86,6 +86,7 @@ local Library = {
     BgImageLabel = nil,
     LucideIcons = {},
     ActivePopup = nil,
+    ActivePopupOpener = nil,
     ActivePopupCloseCallback = nil,
     TextObjects = {},
     InstanceColors = {},
@@ -537,6 +538,7 @@ function Library:CloseActivePopup()
         local popup = self.ActivePopup
         local closeCb = self.ActivePopupCloseCallback
         self.ActivePopup = nil
+        self.ActivePopupOpener = nil
         self.ActivePopupCloseCallback = nil
 
         if closeCb then
@@ -592,7 +594,7 @@ local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameP
             local pPos = Library.ActivePopup.AbsolutePosition
             local pSize = Library.ActivePopup.AbsoluteSize
             if pos.X < pPos.X or pos.X > pPos.X + pSize.X or pos.Y < pPos.Y or pos.Y > pPos.Y + pSize.Y then
-                local opener = Library.ActivePopup.OpenerBtn
+                local opener = Library.ActivePopupOpener
                 local isOverOpener = false
                 if opener and typeof(opener) == "Instance" and opener.Parent then
                     local oPos = opener.AbsolutePosition
@@ -1128,7 +1130,6 @@ function Library:CreateWindow(config)
     notifLayout.Parent = notifContainer
     self.NotificationContainer = notifContainer
 
-    -- Outer wrapper holds drop shadow so MainWindow can clip descendants cleanly
     local WindowHolder = Instance.new("Frame")
     WindowHolder.Name = "RubyWindowHolder"
     WindowHolder.Size = UDim2.new(0, 720, 0, 490)
@@ -1190,7 +1191,6 @@ function Library:CreateWindow(config)
     })
     strokeGrad.Parent = mainStroke
 
-    -- Frosted Glass Diagonal Specular Reflection Overlay
     Library:AddGlassSurface(MainWindow, { ShineTransparency = 0.93, EdgeTransparency = 0.62, Rotation = 130 })
 
     local bgImageLabel = Instance.new("ImageLabel")
@@ -1924,14 +1924,15 @@ function Library:CreateWindow(config)
 
                 Library:RegisterText(titleBtn, false)
 
+                local ToggleObj
                 row.MouseEnter:Connect(function()
-                    if not ToggleObj.Value then
+                    if ToggleObj and not ToggleObj.Value then
                         Library:Tween(titleBtn, 0.15, { TextColor3 = Library.TextColor })
                         Library:Tween(cbStroke, 0.15, { Color = Library.GlassBorder })
                     end
                 end)
                 row.MouseLeave:Connect(function()
-                    if not ToggleObj.Value then
+                    if ToggleObj and not ToggleObj.Value then
                         Library:Tween(titleBtn, 0.15, { TextColor3 = Library.SubTextColor })
                         Library:Tween(cbStroke, 0.15, { Color = Library.GlassBorderSoft })
                     end
@@ -1969,7 +1970,6 @@ function Library:CreateWindow(config)
                             Transparency = selfTog.Value and 0.2 or 0.35
                         })
 
-                        -- Elastic knob stretch effect
                         Library:Tween(knob, 0.08, { Size = UDim2.new(0, 16, 0, 13) })
                         task.delay(0.06, function()
                             if knob and knob.Parent then
@@ -2037,7 +2037,6 @@ function Library:CreateWindow(config)
                     cpPopup.Visible = false
                     cpPopup.ZIndex = 50
                     cpPopup.Parent = Library.PopupGui
-                    cpPopup.OpenerBtn = cpBtn
 
                     local cpScale = Instance.new("UIScale")
                     cpScale.Scale = 0.9
@@ -2196,7 +2195,7 @@ function Library:CreateWindow(config)
                     table.insert(Library.Connections, endConn)
 
                     cpBtn.MouseButton1Click:Connect(function()
-                        if cpPopup.Visible then
+                        if cpPopup.Visible and Library.ActivePopup == cpPopup then
                             Library:CloseActivePopup()
                         else
                             Library:CloseActivePopup()
@@ -2206,6 +2205,7 @@ function Library:CreateWindow(config)
                             cpPopup.Visible = true
                             Library:Tween(cpScale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                             Library.ActivePopup = cpPopup
+                            Library.ActivePopupOpener = cpBtn
                             Library.ActivePopupCloseCallback = function()
                                 Library:Tween(cpScale, 0.15, { Scale = 0.88 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
                                 task.delay(0.15, function()
@@ -2472,7 +2472,6 @@ function Library:CreateWindow(config)
                 return SliderObj
             end
 
-            -- COMPLETELY FIXED & ANIMATED DROPDOWN
             function Groupbox:AddDropdown(id, cfg)
                 cfg = cfg or {}
                 local text = cfg.Text or id or "Dropdown"
@@ -2547,6 +2546,17 @@ function Library:CreateWindow(config)
                 Library:RegisterText(arrow, true)
                 Library:RegisterColor(arrow, "TextColor3", "SubTextColor")
 
+                local listOuter = Instance.new("Frame")
+                listOuter.Name = "DropdownOverlay_" .. tostring(id)
+                listOuter.Size = UDim2.new(0, 160, 0, 0)
+                listOuter.BackgroundColor3 = Library.SolidPopup
+                listOuter.BackgroundTransparency = 0.05
+                listOuter.BorderSizePixel = 0
+                listOuter.Visible = false
+                listOuter.ClipsDescendants = false
+                listOuter.ZIndex = 50
+                listOuter.Parent = Library.PopupGui
+
                 mainBtn.MouseEnter:Connect(function()
                     if Library.ActivePopup ~= listOuter then
                         Library:Tween(mainBtn, 0.15, { BackgroundTransparency = 0.1 })
@@ -2559,19 +2569,6 @@ function Library:CreateWindow(config)
                         Library:Tween(bStroke, 0.15, { Color = Library.GlassBorderSoft })
                     end
                 end)
-
-                -- Outer container (ClipsDescendants = false so Shadow renders outside cleanly)
-                listOuter = Instance.new("Frame")
-                listOuter.Name = "DropdownOverlay_" .. tostring(id)
-                listOuter.Size = UDim2.new(0, 160, 0, 0)
-                listOuter.BackgroundColor3 = Library.SolidPopup
-                listOuter.BackgroundTransparency = 0.05
-                listOuter.BorderSizePixel = 0
-                listOuter.Visible = false
-                listOuter.ClipsDescendants = false
-                listOuter.ZIndex = 50
-                listOuter.Parent = Library.PopupGui
-                listOuter.OpenerBtn = mainBtn
 
                 Library:RegisterColor(listOuter, "BackgroundColor3", "SolidPopup")
 
@@ -2589,7 +2586,6 @@ function Library:CreateWindow(config)
                 Library:AddShadow(listOuter, { Transparency = 0.38, Spread = 28, YOffset = 6, ZIndex = 48 })
                 Library:AddGlassSurface(listOuter, { ShineTransparency = 0.92, EdgeTransparency = 0.65 })
 
-                -- Inner ScrollingFrame (ClipsDescendants = true and explicit high ZIndex so items are always visible!)
                 local listScroll = Instance.new("ScrollingFrame")
                 listScroll.Name = "ListScroll"
                 listScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -2779,7 +2775,6 @@ function Library:CreateWindow(config)
 
                         RefreshOptionStyles(DropdownObj.Value)
 
-                        -- Cascade Slide-in Animation for Dropdown Items
                         for idx, item in ipairs(optionButtons) do
                             item.Label.TextTransparency = 1
                             Library:Tween(item.Label, 0.18 + (idx * 0.02), { TextTransparency = 0 })
@@ -2793,6 +2788,7 @@ function Library:CreateWindow(config)
                         }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
                         Library.ActivePopup = listOuter
+                        Library.ActivePopupOpener = mainBtn
                         Library.ActivePopupCloseCallback = CloseDropdownAnimated
                     end
                 end)
