@@ -86,7 +86,6 @@ local Library = {
 local function InitLucideAPI()
     local endpoints = {
         "https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau",
-        "https://raw.githubusercontent.com/latte-soft/lucide-roblox/master/lib/Icons.luau",
         "https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/a2c3063cc1e54db522dac4ab837b0a35a0da5ed0/icons.lua"
     }
 
@@ -452,18 +451,22 @@ function Library:Unload()
     end
 end
 
+-- Completely fixed notification receiver: handles both Library:Notify({...}) and Library.Notify({...})
 function Library.Notify(...)
     local args = table.pack(...)
     local first = args[1]
     local second = args[2]
     local third = args[3]
 
-    local config, duration
-    if first == Library then
-        config = second
+    local cfg, duration
+    if typeof(first) == "table" and first ~= Library and (first.Title or first.Message or first.Content or first.Text or first.Description) then
+        cfg = first
+        duration = second
+    elseif first == Library then
+        cfg = second
         duration = third
     else
-        config = first
+        cfg = first
         duration = second
     end
 
@@ -472,30 +475,28 @@ function Library.Notify(...)
     local icon = "bell"
     local notifDuration = 3
 
-    if typeof(config) == "table" then
-        title = config.Title or config.Header or config.Name or "Notification"
-        message = config.Message or config.Text or config.Content or config.Description or config.Desc or config.Body or config[1] or ""
-        notifDuration = config.Duration or config.Time or duration or notifDuration
-        icon = config.Icon or config.Image or icon
-    elseif typeof(config) == "string" then
+    if typeof(cfg) == "table" then
+        title = cfg.Title or cfg.Header or cfg.Name or "Notification"
+        local rawMsg = cfg.Message or cfg.Text or cfg.Content or cfg.Description or cfg.Desc or cfg.Body or cfg[1]
+        if typeof(rawMsg) == "table" then
+            message = rawMsg.Message or rawMsg.Text or rawMsg.Content or rawMsg[1] or ""
+        else
+            message = tostring(rawMsg or "")
+        end
+        notifDuration = cfg.Duration or cfg.Time or duration or notifDuration
+        icon = cfg.Icon or cfg.Image or icon
+    elseif typeof(cfg) == "string" then
         if typeof(duration) == "string" then
-            title = config
+            title = cfg
             message = duration
             notifDuration = third or notifDuration
         else
-            message = config
+            message = cfg
             notifDuration = duration or notifDuration
         end
     else
-        message = tostring(config or "")
+        message = tostring(cfg or "")
         notifDuration = duration or notifDuration
-    end
-
-    if typeof(message) == "table" then
-        message = message.Message or message.Text or message.Content or message.Description or message.Desc or message[1] or ""
-        if typeof(message) == "table" then
-            message = HttpService:JSONEncode(message)
-        end
     end
 
     message = tostring(message)
