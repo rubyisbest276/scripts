@@ -21,7 +21,7 @@
 ## 1. 라이브러리 불러오기 및 창 생성
 
 ```lua
-local Library = loadstring(game:HttpGet("[https://raw.githubusercontent.com/YourRepo/RubyUI/main/source.lua](https://raw.githubusercontent.com/rubyisbest276/scripts/refs/heads/main/ui.lua)"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/rubyisbest276/scripts/refs/heads/main/ui.lua"))()
 
 local Window = Library:CreateWindow({
     Title = "EXTERNAL V2",
