@@ -66,6 +66,9 @@ local Library = {
     SubTextColor = Color3.fromRGB(140, 144, 165),
     Font = Enum.Font.GothamMedium,
     FontBold = Enum.Font.GothamBold,
+    BackgroundImage = "",
+    BackgroundTransparency = 0.15,
+    ImageTransparency = 0.85,
     UnloadCallbacks = {},
     Connections = {},
     Keybinds = {},
@@ -73,6 +76,7 @@ local Library = {
     PopupGui = nil,
     MainWindow = nil,
     NotificationContainer = nil,
+    BgImageLabel = nil,
     LucideCache = {},
     ActivePopup = nil,
     TextObjects = {},
@@ -106,7 +110,10 @@ local BuiltInLucide = {
     ["save"] = "rbxassetid://10734883598",
     ["sliders"] = "rbxassetid://10734950857",
     ["mouse-pointer"] = "rbxassetid://10734884248",
-    ["cross"] = "rbxassetid://10709769993"
+    ["cross"] = "rbxassetid://10709769993",
+    ["info"] = "rbxassetid://10723415903",
+    ["alert-triangle"] = "rbxassetid://10709752996",
+    ["check-circle"] = "rbxassetid://10709762142"
 }
 
 local function ResolveIcon(iconInput)
@@ -229,6 +236,16 @@ function Library:UpdateThemeColor(colorType, newColor)
         if item.Instance and item.Instance.Parent and item.Type == colorType then
             item.Instance[item.Property] = newColor
         end
+    end
+end
+
+function Library:SetBackgroundImage(url, transparency)
+    self.BackgroundImage = url or ""
+    self.ImageTransparency = transparency or self.ImageTransparency
+    if self.BgImageLabel then
+        self.BgImageLabel.Image = self.BackgroundImage
+        self.BgImageLabel.ImageTransparency = self.ImageTransparency
+        self.BgImageLabel.Visible = self.BackgroundImage ~= ""
     end
 end
 
@@ -386,68 +403,124 @@ function Library:Unload()
     end
 end
 
-function Library:Notify(message, duration)
-    duration = duration or 3
+function Library:Notify(config, duration)
+    local title = "Notification"
+    local message = ""
+    local icon = "rbxassetid://10723415903"
+    local notifDuration = duration or 3
+
+    if typeof(config) == "table" then
+        title = config.Title or title
+        message = config.Message or config.Text or message
+        notifDuration = config.Duration or notifDuration
+        if config.Icon then
+            icon = ResolveIcon(config.Icon)
+        end
+    else
+        message = tostring(config)
+    end
+
     if not self.NotificationContainer then return end
 
     local notifFrame = Instance.new("Frame")
     notifFrame.Name = "Toast"
-    notifFrame.Size = UDim2.new(1, 0, 0, 38)
+    notifFrame.Size = UDim2.new(1, 0, 0, 52)
+    notifFrame.Position = UDim2.new(1, 40, 0, 0)
     notifFrame.BackgroundColor3 = self.GlassSection
     notifFrame.BackgroundTransparency = 1
     notifFrame.BorderSizePixel = 0
+    notifFrame.ClipsDescendants = true
     notifFrame.Parent = self.NotificationContainer
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = notifFrame
 
     local stroke = Instance.new("UIStroke")
     stroke.Color = self.GlassBorder
+    stroke.Thickness = 1
     stroke.Transparency = 1
     stroke.Parent = notifFrame
 
     local accentBar = Instance.new("Frame")
-    accentBar.Size = UDim2.new(0, 3, 1, -12)
-    accentBar.Position = UDim2.new(0, 8, 0.5, -13)
+    accentBar.Size = UDim2.new(0, 3, 1, 0)
+    accentBar.Position = UDim2.new(0, 0, 0, 0)
     accentBar.BackgroundColor3 = self.Accent
     accentBar.BorderSizePixel = 0
     accentBar.BackgroundTransparency = 1
     accentBar.Parent = notifFrame
 
-    local barCorner = Instance.new("UICorner")
-    barCorner.CornerRadius = UDim.new(0, 3)
-    barCorner.Parent = accentBar
+    local iconLabel = Instance.new("ImageLabel")
+    iconLabel.Size = UDim2.new(0, 20, 0, 20)
+    iconLabel.Position = UDim2.new(0, 12, 0.5, -10)
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Image = icon
+    iconLabel.ImageColor3 = self.Accent
+    iconLabel.ImageTransparency = 1
+    iconLabel.Parent = notifFrame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -44, 0, 16)
+    titleLabel.Position = UDim2.new(0, 40, 0, 8)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Font = self.FontBold
+    titleLabel.Text = title
+    titleLabel.TextColor3 = self.TextColor
+    titleLabel.TextSize = 12
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextTransparency = 1
+    titleLabel.Parent = notifFrame
 
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, -28, 1, 0)
-    textLabel.Position = UDim2.new(0, 18, 0, 0)
+    textLabel.Size = UDim2.new(1, -44, 0, 16)
+    textLabel.Position = UDim2.new(0, 40, 0, 26)
     textLabel.BackgroundTransparency = 1
     textLabel.Font = self.Font
-    textLabel.Text = tostring(message)
-    textLabel.TextColor3 = self.TextColor
-    textLabel.TextSize = 12
+    textLabel.Text = message
+    textLabel.TextColor3 = self.SubTextColor
+    textLabel.TextSize = 11
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.TextTransparency = 1
     textLabel.Parent = notifFrame
 
+    local progressBar = Instance.new("Frame")
+    progressBar.Size = UDim2.new(1, 0, 0, 2)
+    progressBar.Position = UDim2.new(0, 0, 1, -2)
+    progressBar.BackgroundColor3 = self.Accent
+    progressBar.BorderSizePixel = 0
+    progressBar.BackgroundTransparency = 1
+    progressBar.Parent = notifFrame
+
+    Library:RegisterText(titleLabel, true)
     Library:RegisterText(textLabel, false)
     Library:RegisterColor(notifFrame, "BackgroundColor3", "GlassSection")
+    Library:RegisterColor(stroke, "Color", "GlassBorder")
     Library:RegisterColor(accentBar, "BackgroundColor3", "Accent")
-    Library:RegisterColor(textLabel, "TextColor3", "TextColor")
+    Library:RegisterColor(iconLabel, "ImageColor3", "Accent")
+    Library:RegisterColor(titleLabel, "TextColor3", "TextColor")
+    Library:RegisterColor(textLabel, "TextColor3", "SubTextColor")
+    Library:RegisterColor(progressBar, "BackgroundColor3", "Accent")
 
-    Library:Tween(notifFrame, 0.25, { BackgroundTransparency = 0.15 })
+    Library:Tween(notifFrame, 0.35, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.15 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     Library:Tween(stroke, 0.25, { Transparency = 0.3 })
     Library:Tween(accentBar, 0.25, { BackgroundTransparency = 0 })
+    Library:Tween(iconLabel, 0.25, { ImageTransparency = 0 })
+    Library:Tween(titleLabel, 0.25, { TextTransparency = 0 })
     Library:Tween(textLabel, 0.25, { TextTransparency = 0 })
+    Library:Tween(progressBar, 0.25, { BackgroundTransparency = 0.3 })
 
-    task.delay(duration, function()
+    Library:Tween(progressBar, notifDuration, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
+
+    task.delay(notifDuration, function()
         if not notifFrame.Parent then return end
-        Library:Tween(notifFrame, 0.2, { BackgroundTransparency = 1 })
+        Library:Tween(notifFrame, 0.3, { Position = UDim2.new(1, 40, 0, 0), BackgroundTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
         Library:Tween(stroke, 0.2, { Transparency = 1 })
         Library:Tween(accentBar, 0.2, { BackgroundTransparency = 1 })
+        Library:Tween(iconLabel, 0.2, { ImageTransparency = 1 })
+        Library:Tween(titleLabel, 0.2, { TextTransparency = 1 })
         Library:Tween(textLabel, 0.2, { TextTransparency = 1 })
-        task.wait(0.22)
+        Library:Tween(progressBar, 0.2, { BackgroundTransparency = 1 })
+        task.wait(0.32)
         notifFrame:Destroy()
     end)
 end
@@ -595,7 +668,7 @@ function Library:InitKeySystem(config)
     discordBtn.MouseButton1Click:Connect(function()
         if setclipboard then
             setclipboard(DiscordUrl)
-            Library:Notify("Discord link copied to clipboard!", 2.5)
+            Library:Notify({ Title = "Clipboard", Message = "Discord link copied to clipboard!", Duration = 2.5 })
         end
     end)
 
@@ -626,6 +699,8 @@ function Library:CreateWindow(config)
     local FooterText = config.Footer or "Build 2026.11"
     local Center = config.Center ~= false
     local AutoShow = config.AutoShow ~= false
+    local bgUrl = config.BackgroundImage or config.Background or ""
+    local bgTransp = config.ImageTransparency or self.ImageTransparency
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "RubyWindowGui"
@@ -645,8 +720,8 @@ function Library:CreateWindow(config)
 
     local notifContainer = Instance.new("Frame")
     notifContainer.Name = "NotificationStack"
-    notifContainer.Size = UDim2.new(0, 270, 1, -40)
-    notifContainer.Position = UDim2.new(1, -286, 0, 20)
+    notifContainer.Size = UDim2.new(0, 290, 1, -40)
+    notifContainer.Position = UDim2.new(1, -306, 0, 20)
     notifContainer.BackgroundTransparency = 1
     notifContainer.Parent = ScreenGui
 
@@ -666,7 +741,7 @@ function Library:CreateWindow(config)
         MainWindow.Position = UDim2.new(0, 100, 0, 100)
     end
     MainWindow.BackgroundColor3 = self.GlassBg
-    MainWindow.BackgroundTransparency = 0.15
+    MainWindow.BackgroundTransparency = self.BackgroundTransparency
     MainWindow.BorderSizePixel = 0
     MainWindow.Visible = AutoShow
     MainWindow.ClipsDescendants = true
@@ -674,6 +749,19 @@ function Library:CreateWindow(config)
     self.MainWindow = MainWindow
 
     Library:RegisterColor(MainWindow, "BackgroundColor3", "GlassBg")
+
+    local bgImageLabel = Instance.new("ImageLabel")
+    bgImageLabel.Name = "CustomBackground"
+    bgImageLabel.Size = UDim2.new(1, 0, 1, 0)
+    bgImageLabel.Position = UDim2.new(0, 0, 0, 0)
+    bgImageLabel.BackgroundTransparency = 1
+    bgImageLabel.Image = bgUrl
+    bgImageLabel.ImageTransparency = bgTransp
+    bgImageLabel.ScaleType = Enum.ScaleType.Crop
+    bgImageLabel.Visible = bgUrl ~= ""
+    bgImageLabel.ZIndex = 0
+    bgImageLabel.Parent = MainWindow
+    self.BgImageLabel = bgImageLabel
 
     local mainCorner = Instance.new("UICorner")
     mainCorner.CornerRadius = UDim.new(0, 8)
@@ -869,11 +957,11 @@ function Library:CreateWindow(config)
         self.Open = not self.Open
         if self.Open then
             MainWindow.Visible = true
-            Library:Tween(MainWindow, 0.2, { Size = UDim2.new(0, 720, 0, 490) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            Library:Tween(MainWindow, 0.25, { Size = UDim2.new(0, 720, 0, 490) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         else
             Library:CloseActivePopup()
-            Library:Tween(MainWindow, 0.15, { Size = UDim2.new(0, 700, 0, 470) })
-            task.delay(0.15, function()
+            Library:Tween(MainWindow, 0.2, { Size = UDim2.new(0, 680, 0, 460) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+            task.delay(0.2, function()
                 if not self.Open then
                     MainWindow.Visible = false
                 end
@@ -946,6 +1034,7 @@ function Library:CreateWindow(config)
         local tabScroll = Instance.new("ScrollingFrame")
         tabScroll.Name = "Scroll_" .. tabName
         tabScroll.Size = UDim2.new(1, 0, 1, 0)
+        tabScroll.Position = UDim2.new(0, 16, 0, 0)
         tabScroll.BackgroundTransparency = 1
         tabScroll.BorderSizePixel = 0
         tabScroll.ScrollBarThickness = 3
@@ -1006,7 +1095,14 @@ function Library:CreateWindow(config)
         local function ShowTab()
             Library:CloseActivePopup()
             for _, t in ipairs(WindowObj.Tabs) do
-                t.View.Visible = false
+                if t ~= Tab and t.View.Visible then
+                    local oldView = t.View
+                    Library:Tween(oldView, 0.15, { Position = UDim2.new(0, -16, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                    task.delay(0.15, function()
+                        oldView.Visible = false
+                        oldView.Position = UDim2.new(0, 16, 0, 0)
+                    end)
+                end
                 Library:Tween(t.Button, 0.15, { BackgroundTransparency = 1 })
                 Library:Tween(t.Label, 0.15, { TextColor3 = Library.SubTextColor })
                 Library:Tween(t.ActiveBar, 0.15, { BackgroundTransparency = 1 })
@@ -1014,7 +1110,11 @@ function Library:CreateWindow(config)
                     Library:Tween(t.Icon, 0.15, { ImageColor3 = Library.SubTextColor })
                 end
             end
+
+            tabScroll.Position = UDim2.new(0, 16, 0, 0)
             tabScroll.Visible = true
+            Library:Tween(tabScroll, 0.25, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
             Library:Tween(tabButton, 0.15, { BackgroundTransparency = 0.25 })
             Library:Tween(tabTitle, 0.15, { TextColor3 = Library.TextColor })
             Library:Tween(activeBar, 0.15, { BackgroundTransparency = 0 })
@@ -2032,14 +2132,14 @@ function SaveManager:Save(name)
 
     local path = self.Folder .. "/" .. name .. ".json"
     writefile(path, HttpService:JSONEncode(data))
-    self.Library:Notify("Config saved: " .. name, 3)
+    self.Library:Notify({ Title = "Configuration", Message = "Config saved: " .. name, Duration = 3 })
 end
 
 function SaveManager:Load(name)
     if not (readfile and isfile) then return end
     local path = self.Folder .. "/" .. name .. ".json"
     if not isfile(path) then
-        self.Library:Notify("Config not found: " .. name, 3)
+        self.Library:Notify({ Title = "Configuration", Message = "Config not found: " .. name, Duration = 3 })
         return
     end
 
@@ -2064,7 +2164,7 @@ function SaveManager:Load(name)
         end
     end
 
-    self.Library:Notify("Config loaded: " .. name, 3)
+    self.Library:Notify({ Title = "Configuration", Message = "Config loaded: " .. name, Duration = 3 })
 end
 
 function SaveManager:Delete(name)
@@ -2072,7 +2172,7 @@ function SaveManager:Delete(name)
     local path = self.Folder .. "/" .. name .. ".json"
     if isfile(path) then
         delfile(path)
-        self.Library:Notify("Config deleted: " .. name, 3)
+        self.Library:Notify({ Title = "Configuration", Message = "Config deleted: " .. name, Duration = 3 })
     end
 end
 
@@ -2170,7 +2270,7 @@ function SaveManager:BuildConfigSection(tab)
             if selectedConfig ~= "" and writefile then
                 SafeMakeFolder(self.Folder)
                 writefile(self.Folder .. "/" .. self.AutoloadFile, selectedConfig)
-                self.Library:Notify("Autoload set to: " .. selectedConfig, 3)
+                self.Library:Notify({ Title = "Configuration", Message = "Autoload set to: " .. selectedConfig, Duration = 3 })
             end
         end
     })
@@ -2264,6 +2364,28 @@ function ThemeManager:ApplyToTab(tab)
         Title = "Text Color",
         Callback = function(color)
             self.Library:UpdateThemeColor("TextColor", color)
+        end
+    })
+
+    gb:AddInput("ThemeManager_CustomBgImage", {
+        Text = "Background Image URL / Asset",
+        Default = self.Library.BackgroundImage,
+        Placeholder = "rbxassetid:// or url...",
+        Finished = true,
+        Callback = function(url)
+            self.Library:SetBackgroundImage(url, self.Library.ImageTransparency)
+        end
+    })
+
+    gb:AddSlider("ThemeManager_BgImageTransparency", {
+        Text = "Background Image Transparency",
+        Default = math.floor(self.Library.ImageTransparency * 100),
+        Min = 0,
+        Max = 100,
+        Rounding = 0,
+        Suffix = "%",
+        Callback = function(val)
+            self.Library:SetBackgroundImage(self.Library.BackgroundImage, val / 100)
         end
     })
 
