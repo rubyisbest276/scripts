@@ -1,7 +1,3 @@
--- [[ Ruby UI Library - Complete Glassmorphic Engine with Lucide Icon Support ]]
--- Architecture: Window -> Tab -> Groupbox (Left/Right) -> Controls
--- Supported Icons: Lucide Icon Names ("swords", "flame", "eye", etc.) OR Roblox Asset ID ("rbxassetid://...")
-
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -19,9 +15,6 @@ local function GetSafeGuiParent()
     return LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- =========================================================================
--- GLOBAL STATE & REGISTRY
--- =========================================================================
 local Options = {}
 local Toggles = {}
 
@@ -32,16 +25,42 @@ if getgenv then
     getgenv().Toggles = Toggles
 end
 
+local Fonts = {
+    ["Gotham"] = Enum.Font.GothamMedium,
+    ["GothamBold"] = Enum.Font.GothamBold,
+    ["Fredoka"] = Enum.Font.FredokaOne,
+    ["Nunito"] = Enum.Font.Nunito,
+    ["Ubuntu"] = Enum.Font.Ubuntu,
+    ["SourceSans"] = Enum.Font.SourceSansSemibold,
+    ["Roboto"] = Enum.Font.Roboto,
+    ["Montserrat"] = Enum.Font.Montserrat,
+    ["JosefinSans"] = Enum.Font.JosefinSans,
+    ["Sarpanch"] = Enum.Font.Sarpanch
+}
+
+local FontKeys = {
+    "Gotham",
+    "GothamBold",
+    "Fredoka",
+    "Nunito",
+    "Ubuntu",
+    "SourceSans",
+    "Roboto",
+    "Montserrat",
+    "JosefinSans",
+    "Sarpanch"
+}
+
 local Library = {
     Name = "RubyUI",
     Open = true,
-    Accent = Color3.fromRGB(250, 44, 83),          -- Vivid Ruby Rose
-    GlassBg = Color3.fromRGB(15, 16, 22),         -- Deep Frosted Base
-    GlassSidebar = Color3.fromRGB(11, 12, 17),    -- Dark Sidebar Tint
-    GlassSection = Color3.fromRGB(20, 22, 30),    -- Translucent Element Card
-    GlassElement = Color3.fromRGB(26, 28, 38),    -- Input & Slider Base
-    GlassBorder = Color3.fromRGB(60, 65, 85),     -- Glass Edge Highlight
-    GlassBorderSoft = Color3.fromRGB(36, 40, 52), -- Muted Sub-border
+    Accent = Color3.fromRGB(250, 44, 83),
+    GlassBg = Color3.fromRGB(15, 16, 22),
+    GlassSidebar = Color3.fromRGB(11, 12, 17),
+    GlassSection = Color3.fromRGB(20, 22, 30),
+    GlassElement = Color3.fromRGB(26, 28, 38),
+    GlassBorder = Color3.fromRGB(60, 65, 85),
+    GlassBorderSoft = Color3.fromRGB(36, 40, 52),
     TextColor = Color3.fromRGB(245, 245, 250),
     SubTextColor = Color3.fromRGB(140, 144, 165),
     Font = Enum.Font.GothamMedium,
@@ -50,12 +69,15 @@ local Library = {
     Connections = {},
     Keybinds = {},
     ScreenGui = nil,
+    PopupGui = nil,
     MainWindow = nil,
     NotificationContainer = nil,
     LucideCache = {},
+    ActivePopup = nil,
+    TextObjects = {},
+    InstanceColors = {}
 }
 
--- Built-in Lucide Fallback Table
 local BuiltInLucide = {
     ["swords"] = "rbxassetid://10709791437",
     ["sword"] = "rbxassetid://10709791281",
@@ -86,12 +108,10 @@ local BuiltInLucide = {
     ["cross"] = "rbxassetid://10709769993"
 }
 
--- Lucide / Asset Resolver
 local function ResolveIcon(iconInput)
     if not iconInput or iconInput == "" then return "" end
     iconInput = tostring(iconInput)
 
-    -- Case 1: Direct Asset ID or URL
     if iconInput:find("rbxassetid://") or iconInput:find("http://") or iconInput:find("https://") then
         return iconInput
     end
@@ -99,21 +119,17 @@ local function ResolveIcon(iconInput)
         return "rbxassetid://" .. iconInput
     end
 
-    -- Case 2: Clean Lucide Name Resolver
     local cleanName = iconInput:lower():gsub("^lucide%-", ""):gsub("_", "-")
 
-    -- Check Memory Cache
     if Library.LucideCache[cleanName] then
         return Library.LucideCache[cleanName]
     end
 
-    -- Check Built-in Fallbacks
     if BuiltInLucide[cleanName] then
         Library.LucideCache[cleanName] = BuiltInLucide[cleanName]
         return BuiltInLucide[cleanName]
     end
 
-    -- Fetch from external Lucide index if available
     local success, assetId = pcall(function()
         if game.HttpGet then
             local json = game:HttpGet("https://raw.githubusercontent.com/Footagesus/lucide-roblox/main/icons.json")
@@ -130,7 +146,7 @@ local function ResolveIcon(iconInput)
         return assetId
     end
 
-    return "rbxassetid://10709759764" -- Safe fallback (Box icon)
+    return "rbxassetid://10709759764"
 end
 
 local SaveManager = {
@@ -153,9 +169,6 @@ local ThemeManager = {
     }
 }
 
--- =========================================================================
--- ANIMATION / TWEEN ENGINE
--- =========================================================================
 function Library:Tween(object, time, properties, style, direction)
     local info = TweenInfo.new(time or 0.2, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out)
     local anim = TweenService:Create(object, info, properties)
@@ -190,9 +203,41 @@ local function SafeMakeFolder(folder)
     end
 end
 
--- =========================================================================
--- KEYBIND SYSTEM
--- =========================================================================
+function Library:RegisterText(label, isBold)
+    table.insert(self.TextObjects, { Label = label, IsBold = isBold })
+    label.Font = isBold and self.FontBold or self.Font
+end
+
+function Library:RegisterColor(instance, property, colorType)
+    table.insert(self.InstanceColors, { Instance = instance, Property = property, Type = colorType })
+end
+
+function Library:SetFont(newFont)
+    self.Font = newFont
+    self.FontBold = newFont
+    for _, item in ipairs(self.TextObjects) do
+        if item.Label and item.Label.Parent then
+            item.Label.Font = newFont
+        end
+    end
+end
+
+function Library:UpdateThemeColor(colorType, newColor)
+    self[colorType] = newColor
+    for _, item in ipairs(self.InstanceColors) do
+        if item.Instance and item.Instance.Parent and item.Type == colorType then
+            item.Instance[item.Property] = newColor
+        end
+    end
+end
+
+function Library:CloseActivePopup()
+    if self.ActivePopup then
+        self.ActivePopup.Visible = false
+        self.ActivePopup = nil
+    end
+end
+
 local function ConvertKeyCodeToString(keyCode)
     if not keyCode then return "None" end
     if typeof(keyCode) == "string" then return keyCode end
@@ -232,6 +277,28 @@ local function KeyMatches(keyA, keyB)
 end
 
 local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if Library.ActivePopup and Library.ActivePopup.Visible then
+            local pos = input.Position
+            local pPos = Library.ActivePopup.AbsolutePosition
+            local pSize = Library.ActivePopup.AbsoluteSize
+            if pos.X < pPos.X or pos.X > pPos.X + pSize.X or pos.Y < pPos.Y or pos.Y > pPos.Y + pSize.Y then
+                local opener = Library.ActivePopup:GetAttribute("OpenerBtn")
+                local isOverOpener = false
+                if opener and typeof(opener) == "Instance" and opener.Parent then
+                    local oPos = opener.AbsolutePosition
+                    local oSize = opener.AbsoluteSize
+                    if pos.X >= oPos.X and pos.X <= oPos.X + oSize.X and pos.Y >= oPos.Y and pos.Y <= oPos.Y + oSize.Y then
+                        isOverOpener = true
+                    end
+                end
+                if not isOverOpener then
+                    Library:CloseActivePopup()
+                end
+            end
+        end
+    end
+
     if not gameProcessed and Options.MenuKeybind then
         local menuKey = Options.MenuKeybind.Value
         if KeyMatches(menuKey, input.KeyCode) or KeyMatches(menuKey, input.UserInputType) then
@@ -285,9 +352,6 @@ local inputEndedConn = UserInputService.InputEnded:Connect(function(input, _)
 end)
 table.insert(Library.Connections, inputEndedConn)
 
--- =========================================================================
--- UNLOAD SYSTEM
--- =========================================================================
 function Library:OnUnload(fn)
     table.insert(self.UnloadCallbacks, fn)
 end
@@ -308,6 +372,11 @@ function Library:Unload()
         self.ScreenGui = nil
     end
 
+    if self.PopupGui then
+        self.PopupGui:Destroy()
+        self.PopupGui = nil
+    end
+
     _G.Options = nil
     _G.Toggles = nil
     if getgenv then
@@ -316,9 +385,6 @@ function Library:Unload()
     end
 end
 
--- =========================================================================
--- NOTIFICATION SYSTEM
--- =========================================================================
 function Library:Notify(message, duration)
     duration = duration or 3
     if not self.NotificationContainer then return end
@@ -364,6 +430,11 @@ function Library:Notify(message, duration)
     textLabel.TextTransparency = 1
     textLabel.Parent = notifFrame
 
+    Library:RegisterText(textLabel, false)
+    Library:RegisterColor(notifFrame, "BackgroundColor3", "GlassSection")
+    Library:RegisterColor(accentBar, "BackgroundColor3", "Accent")
+    Library:RegisterColor(textLabel, "TextColor3", "TextColor")
+
     Library:Tween(notifFrame, 0.25, { BackgroundTransparency = 0.15 })
     Library:Tween(stroke, 0.25, { Transparency = 0.3 })
     Library:Tween(accentBar, 0.25, { BackgroundTransparency = 0 })
@@ -380,9 +451,6 @@ function Library:Notify(message, duration)
     end)
 end
 
--- =========================================================================
--- OPTIONAL KEY SYSTEM
--- =========================================================================
 function Library:InitKeySystem(config)
     config = config or {}
     local Title = config.Title or "Key Verification"
@@ -517,6 +585,12 @@ function Library:InitKeySystem(config)
     discordBtn.TextSize = 11
     discordBtn.Parent = KeyFrame
 
+    Library:RegisterText(kTitle, true)
+    Library:RegisterText(kSub, false)
+    Library:RegisterText(inputField, false)
+    Library:RegisterText(verifyBtn, true)
+    Library:RegisterText(discordBtn, false)
+
     discordBtn.MouseButton1Click:Connect(function()
         if setclipboard then
             setclipboard(DiscordUrl)
@@ -544,18 +618,15 @@ function Library:InitKeySystem(config)
     end)
 end
 
--- =========================================================================
--- MAIN WINDOW CREATION
--- =========================================================================
 function Library:CreateWindow(config)
     config = config or {}
     local TitleText = config.Title or "EXTERNAL V2"
     local SubTitleText = config.SubTitle or "UNIVERSAL"
-    local FooterText = config.Footer or "Build 2026.11 | Daegu"
+    local FooterText = config.Footer or "Build 2026.11"
     local Center = config.Center ~= false
     local AutoShow = config.AutoShow ~= false
 
-    local ScreenGui = self.ScreenGui or Instance.new("ScreenGui")
+    local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "RubyWindowGui"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -563,7 +634,14 @@ function Library:CreateWindow(config)
     ScreenGui.Parent = GetSafeGuiParent()
     self.ScreenGui = ScreenGui
 
-    -- Toast Stack
+    local PopupGui = Instance.new("ScreenGui")
+    PopupGui.Name = "RubyPopupOverlayGui"
+    PopupGui.ResetOnSpawn = false
+    PopupGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    PopupGui.DisplayOrder = 2000
+    PopupGui.Parent = GetSafeGuiParent()
+    self.PopupGui = PopupGui
+
     local notifContainer = Instance.new("Frame")
     notifContainer.Name = "NotificationStack"
     notifContainer.Size = UDim2.new(0, 270, 1, -40)
@@ -578,7 +656,6 @@ function Library:CreateWindow(config)
     notifLayout.Parent = notifContainer
     self.NotificationContainer = notifContainer
 
-    -- Outer Glass Window
     local MainWindow = Instance.new("Frame")
     MainWindow.Name = "RubyMainWindow"
     MainWindow.Size = UDim2.new(0, 720, 0, 490)
@@ -588,12 +665,14 @@ function Library:CreateWindow(config)
         MainWindow.Position = UDim2.new(0, 100, 0, 100)
     end
     MainWindow.BackgroundColor3 = self.GlassBg
-    MainWindow.BackgroundTransparency = 0.15 -- True Frosted Glass Look
+    MainWindow.BackgroundTransparency = 0.15
     MainWindow.BorderSizePixel = 0
     MainWindow.Visible = AutoShow
-    MainWindow.ClipsDescendants = true -- Prevents content leaking outside
+    MainWindow.ClipsDescendants = true
     MainWindow.Parent = ScreenGui
     self.MainWindow = MainWindow
+
+    Library:RegisterColor(MainWindow, "BackgroundColor3", "GlassBg")
 
     local mainCorner = Instance.new("UICorner")
     mainCorner.CornerRadius = UDim.new(0, 8)
@@ -605,7 +684,8 @@ function Library:CreateWindow(config)
     mainStroke.Transparency = 0.25
     mainStroke.Parent = MainWindow
 
-    -- Dragging Logic
+    Library:RegisterColor(mainStroke, "Color", "GlassBorder")
+
     local dragging, dragStart, startPos
     local titleBar = Instance.new("Frame")
     titleBar.Name = "Header"
@@ -637,18 +717,19 @@ function Library:CreateWindow(config)
                 startPos.Y.Scale,
                 startPos.Y.Offset + delta.Y
             )
+            Library:CloseActivePopup()
         end
     end)
     table.insert(self.Connections, dragMoveConn)
 
-    -- Accent Top Strip
     local topAccent = Instance.new("Frame")
     topAccent.Size = UDim2.new(1, 0, 0, 2)
     topAccent.BackgroundColor3 = self.Accent
     topAccent.BorderSizePixel = 0
     topAccent.Parent = MainWindow
 
-    -- Title Labels
+    Library:RegisterColor(topAccent, "BackgroundColor3", "Accent")
+
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "TitleText"
     titleLabel.Size = UDim2.new(0, 200, 1, 0)
@@ -673,6 +754,11 @@ function Library:CreateWindow(config)
     subTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     subTitleLabel.Parent = titleBar
 
+    Library:RegisterText(titleLabel, true)
+    Library:RegisterText(subTitleLabel, false)
+    Library:RegisterColor(titleLabel, "TextColor3", "TextColor")
+    Library:RegisterColor(subTitleLabel, "TextColor3", "SubTextColor")
+
     titleLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
         subTitleLabel.Position = UDim2.new(0, 16 + titleLabel.TextBounds.X + 8, 0, 0)
     end)
@@ -684,9 +770,8 @@ function Library:CreateWindow(config)
     headerLine.BorderSizePixel = 0
     headerLine.Parent = MainWindow
 
-    -- =========================================================================
-    -- FIXED SIDEBAR (CONFINED & SCROLLABLE CONTAINER)
-    -- =========================================================================
+    Library:RegisterColor(headerLine, "BackgroundColor3", "GlassBorderSoft")
+
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, 150, 1, -72)
@@ -696,6 +781,8 @@ function Library:CreateWindow(config)
     sidebar.BorderSizePixel = 0
     sidebar.ClipsDescendants = true
     sidebar.Parent = MainWindow
+
+    Library:RegisterColor(sidebar, "BackgroundColor3", "GlassSidebar")
 
     local sidebarScroll = Instance.new("ScrollingFrame")
     sidebarScroll.Name = "SidebarScroll"
@@ -729,7 +816,8 @@ function Library:CreateWindow(config)
     sidebarDivider.BorderSizePixel = 0
     sidebarDivider.Parent = MainWindow
 
-    -- Viewport Container
+    Library:RegisterColor(sidebarDivider, "BackgroundColor3", "GlassBorderSoft")
+
     local tabContainer = Instance.new("Frame")
     tabContainer.Name = "TabViews"
     tabContainer.Size = UDim2.new(1, -151, 1, -72)
@@ -738,13 +826,14 @@ function Library:CreateWindow(config)
     tabContainer.ClipsDescendants = true
     tabContainer.Parent = MainWindow
 
-    -- Footer
     local footerLine = Instance.new("Frame")
     footerLine.Size = UDim2.new(1, 0, 0, 1)
     footerLine.Position = UDim2.new(0, 0, 1, -27)
     footerLine.BackgroundColor3 = self.GlassBorderSoft
     footerLine.BorderSizePixel = 0
     footerLine.Parent = MainWindow
+
+    Library:RegisterColor(footerLine, "BackgroundColor3", "GlassBorderSoft")
 
     local footerLabel = Instance.new("TextLabel")
     footerLabel.Name = "FooterText"
@@ -757,6 +846,9 @@ function Library:CreateWindow(config)
     footerLabel.TextSize = 11
     footerLabel.TextXAlignment = Enum.TextXAlignment.Left
     footerLabel.Parent = MainWindow
+
+    Library:RegisterText(footerLabel, false)
+    Library:RegisterColor(footerLabel, "TextColor3", "SubTextColor")
 
     Options.MenuKeybind = {
         Value = Enum.KeyCode.RightShift,
@@ -778,6 +870,7 @@ function Library:CreateWindow(config)
             MainWindow.Visible = true
             Library:Tween(MainWindow, 0.2, { Size = UDim2.new(0, 720, 0, 490) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         else
+            Library:CloseActivePopup()
             Library:Tween(MainWindow, 0.15, { Size = UDim2.new(0, 700, 0, 470) })
             task.delay(0.15, function()
                 if not self.Open then
@@ -787,9 +880,6 @@ function Library:CreateWindow(config)
         end
     end
 
-    -- =========================================================================
-    -- TAB IMPLEMENTATION (WITH RESOLVED ICON)
-    -- =========================================================================
     function WindowObj:AddTab(tabName, iconInput)
         local Tab = {
             Name = tabName,
@@ -807,6 +897,8 @@ function Library:CreateWindow(config)
         tabButton.AutoButtonColor = false
         tabButton.Text = ""
         tabButton.Parent = sidebarScroll
+
+        Library:RegisterColor(tabButton, "BackgroundColor3", "GlassSection")
 
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 6)
@@ -834,6 +926,8 @@ function Library:CreateWindow(config)
         tabTitle.TextXAlignment = Enum.TextXAlignment.Left
         tabTitle.Parent = tabButton
 
+        Library:RegisterText(tabTitle, false)
+
         local activeBar = Instance.new("Frame")
         activeBar.Size = UDim2.new(0, 3, 0, 16)
         activeBar.Position = UDim2.new(0, 1, 0.5, -8)
@@ -842,11 +936,12 @@ function Library:CreateWindow(config)
         activeBar.BackgroundTransparency = 1
         activeBar.Parent = tabButton
 
+        Library:RegisterColor(activeBar, "BackgroundColor3", "Accent")
+
         local abCorner = Instance.new("UICorner")
         abCorner.CornerRadius = UDim.new(0, 2)
         abCorner.Parent = activeBar
 
-        -- Scrollable Tab View Frame
         local tabScroll = Instance.new("ScrollingFrame")
         tabScroll.Name = "Scroll_" .. tabName
         tabScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -858,6 +953,12 @@ function Library:CreateWindow(config)
         tabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
         tabScroll.Parent = tabContainer
 
+        Library:RegisterColor(tabScroll, "ScrollBarImageColor3", "GlassBorder")
+
+        tabScroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            Library:CloseActivePopup()
+        end)
+
         local pad = Instance.new("UIPadding")
         pad.PaddingTop = UDim.new(0, 10)
         pad.PaddingBottom = UDim.new(0, 12)
@@ -865,7 +966,6 @@ function Library:CreateWindow(config)
         pad.PaddingRight = UDim.new(0, 12)
         pad.Parent = tabScroll
 
-        -- Left Column
         local leftCol = Instance.new("Frame")
         leftCol.Name = "LeftColumn"
         leftCol.Size = UDim2.new(0.5, -6, 0, 0)
@@ -878,7 +978,6 @@ function Library:CreateWindow(config)
         leftLayout.Padding = UDim.new(0, 10)
         leftLayout.Parent = leftCol
 
-        -- Right Column
         local rightCol = Instance.new("Frame")
         rightCol.Name = "RightColumn"
         rightCol.Size = UDim2.new(0.5, -6, 0, 0)
@@ -904,6 +1003,7 @@ function Library:CreateWindow(config)
         rightLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvas)
 
         local function ShowTab()
+            Library:CloseActivePopup()
             for _, t in ipairs(WindowObj.Tabs) do
                 t.View.Visible = false
                 Library:Tween(t.Button, 0.15, { BackgroundTransparency = 1 })
@@ -937,9 +1037,6 @@ function Library:CreateWindow(config)
             ShowTab()
         end
 
-        -- =================================================================
-        -- GROUPBOX CONSTRUCTOR (GLASS CARDS)
-        -- =================================================================
         local function CreateGroupbox(parentContainer, groupTitle)
             local gb = Instance.new("Frame")
             gb.Name = "Groupbox_" .. groupTitle
@@ -948,6 +1045,8 @@ function Library:CreateWindow(config)
             gb.BackgroundTransparency = 0.35
             gb.BorderSizePixel = 0
             gb.Parent = parentContainer
+
+            Library:RegisterColor(gb, "BackgroundColor3", "GlassSection")
 
             local gbCorner = Instance.new("UICorner")
             gbCorner.CornerRadius = UDim.new(0, 6)
@@ -958,6 +1057,8 @@ function Library:CreateWindow(config)
             gbStroke.Thickness = 1
             gbStroke.Transparency = 0.35
             gbStroke.Parent = gb
+
+            Library:RegisterColor(gbStroke, "Color", "GlassBorder")
 
             local header = Instance.new("Frame")
             header.Name = "Header"
@@ -976,12 +1077,17 @@ function Library:CreateWindow(config)
             gbTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
             gbTitleLabel.Parent = header
 
+            Library:RegisterText(gbTitleLabel, true)
+            Library:RegisterColor(gbTitleLabel, "TextColor3", "TextColor")
+
             local line = Instance.new("Frame")
             line.Size = UDim2.new(1, 0, 0, 1)
             line.Position = UDim2.new(0, 0, 0, 26)
             line.BackgroundColor3 = Library.GlassBorderSoft
             line.BorderSizePixel = 0
             line.Parent = gb
+
+            Library:RegisterColor(line, "BackgroundColor3", "GlassBorderSoft")
 
             local container = Instance.new("Frame")
             container.Name = "Container"
@@ -1016,9 +1122,6 @@ function Library:CreateWindow(config)
                 Container = container
             }
 
-            -- =============================================================
-            -- 1. TOGGLE (CHAINING: ColorPicker, KeyPicker)
-            -- =============================================================
             function Groupbox:AddToggle(id, cfg)
                 cfg = cfg or {}
                 local text = cfg.Text or id or "Toggle"
@@ -1049,6 +1152,8 @@ function Library:CreateWindow(config)
                 cbStroke.Color = Library.GlassBorderSoft
                 cbStroke.Parent = checkBox
 
+                Library:RegisterColor(cbStroke, "Color", "GlassBorderSoft")
+
                 local titleBtn = Instance.new("TextButton")
                 titleBtn.Size = UDim2.new(1, -26, 1, 0)
                 titleBtn.Position = UDim2.new(0, 24, 0, 0)
@@ -1060,6 +1165,8 @@ function Library:CreateWindow(config)
                 titleBtn.TextXAlignment = Enum.TextXAlignment.Left
                 titleBtn.AutoButtonColor = false
                 titleBtn.Parent = row
+
+                Library:RegisterText(titleBtn, false)
 
                 local addonsContainer = Instance.new("Frame")
                 addonsContainer.Name = "Addons"
@@ -1132,16 +1239,19 @@ function Library:CreateWindow(config)
                     cStroke.Color = Library.GlassBorder
                     cStroke.Parent = cpBtn
 
+                    Library:RegisterColor(cStroke, "Color", "GlassBorder")
+
                     local cpPopup = Instance.new("Frame")
-                    cpPopup.Name = "Popup"
+                    cpPopup.Name = "ColorPopup_" .. tostring(cpId)
                     cpPopup.Size = UDim2.new(0, 170, 0, 155)
-                    cpPopup.Position = UDim2.new(1, 10, 0, 0)
                     cpPopup.BackgroundColor3 = Library.GlassSection
                     cpPopup.BackgroundTransparency = 0.05
                     cpPopup.BorderSizePixel = 0
                     cpPopup.Visible = false
-                    cpPopup.ZIndex = 60
-                    cpPopup.Parent = cpBtn
+                    cpPopup.Parent = Library.PopupGui
+
+                    cpPopup:SetAttribute("OpenerBtn", cpBtn)
+                    Library:RegisterColor(cpPopup, "BackgroundColor3", "GlassSection")
 
                     local pCorner = Instance.new("UICorner")
                     pCorner.CornerRadius = UDim.new(0, 6)
@@ -1150,6 +1260,8 @@ function Library:CreateWindow(config)
                     local pStroke = Instance.new("UIStroke")
                     pStroke.Color = Library.GlassBorder
                     pStroke.Parent = cpPopup
+
+                    Library:RegisterColor(pStroke, "Color", "GlassBorder")
 
                     local pTitle = Instance.new("TextLabel")
                     pTitle.Size = UDim2.new(1, -12, 0, 20)
@@ -1160,8 +1272,10 @@ function Library:CreateWindow(config)
                     pTitle.TextColor3 = Library.TextColor
                     pTitle.TextSize = 11
                     pTitle.TextXAlignment = Enum.TextXAlignment.Left
-                    pTitle.ZIndex = 61
                     pTitle.Parent = cpPopup
+
+                    Library:RegisterText(pTitle, true)
+                    Library:RegisterColor(pTitle, "TextColor3", "TextColor")
 
                     local svBox = Instance.new("ImageButton")
                     svBox.Size = UDim2.new(1, -16, 0, 95)
@@ -1169,7 +1283,6 @@ function Library:CreateWindow(config)
                     svBox.Image = "rbxassetid://4155801252"
                     svBox.BorderSizePixel = 0
                     svBox.AutoButtonColor = false
-                    svBox.ZIndex = 61
                     svBox.Parent = cpPopup
 
                     local hueBar = Instance.new("ImageButton")
@@ -1178,7 +1291,6 @@ function Library:CreateWindow(config)
                     hueBar.Image = "rbxassetid://3641079629"
                     hueBar.BorderSizePixel = 0
                     hueBar.AutoButtonColor = false
-                    hueBar.ZIndex = 61
                     hueBar.Parent = cpPopup
 
                     local curHue, curSat, curVal = cpDef:ToHSV()
@@ -1231,7 +1343,15 @@ function Library:CreateWindow(config)
                     table.insert(Library.Connections, endConn)
 
                     cpBtn.MouseButton1Click:Connect(function()
-                        cpPopup.Visible = not cpPopup.Visible
+                        if cpPopup.Visible then
+                            Library:CloseActivePopup()
+                        else
+                            Library:CloseActivePopup()
+                            local absPos = cpBtn.AbsolutePosition
+                            cpPopup.Position = UDim2.new(0, absPos.X + cpBtn.AbsoluteSize.X + 8, 0, absPos.Y)
+                            cpPopup.Visible = true
+                            Library.ActivePopup = cpPopup
+                        end
                     end)
 
                     if cpId then
@@ -1261,13 +1381,16 @@ function Library:CreateWindow(config)
                         Callback = kpCb,
                         SetValue = function(selfKp, key)
                             selfKp.Value = key
+                            if selfKp.Button then
+                                selfKp.Button.Text = "[" .. ConvertKeyCodeToString(key) .. "]"
+                            end
                         end
                     }
 
                     if not noUi then
                         local kpBtn = Instance.new("TextButton")
                         kpBtn.Name = "KeyBtn_" .. tostring(kpId)
-                        kpBtn.Size = UDim2.new(0, 44, 0, 16)
+                        kpBtn.Size = UDim2.new(0, 48, 0, 16)
                         kpBtn.BackgroundColor3 = Library.GlassElement
                         kpBtn.BackgroundTransparency = 0.2
                         kpBtn.BorderSizePixel = 0
@@ -1275,12 +1398,17 @@ function Library:CreateWindow(config)
                         kpBtn.Text = "[" .. ConvertKeyCodeToString(kpDef) .. "]"
                         kpBtn.TextColor3 = Library.SubTextColor
                         kpBtn.TextSize = 10
+                        kpBtn.TextTruncate = Enum.TextTruncate.AtEnd
+                        kpBtn.ClipsDescendants = true
                         kpBtn.AutoButtonColor = false
                         kpBtn.Parent = addonsContainer
 
                         local kpCorner = Instance.new("UICorner")
                         kpCorner.CornerRadius = UDim.new(0, 3)
                         kpCorner.Parent = kpBtn
+
+                        Library:RegisterText(kpBtn, false)
+                        Library:RegisterColor(kpBtn, "BackgroundColor3", "GlassElement")
 
                         local listening = false
                         kpBtn.MouseButton1Click:Connect(function()
@@ -1316,9 +1444,6 @@ function Library:CreateWindow(config)
                 return ChainWrapper
             end
 
-            -- =============================================================
-            -- 2. SLIDER
-            -- =============================================================
             function Groupbox:AddSlider(id, cfg)
                 cfg = cfg or {}
                 local text = cfg.Text or id or "Slider"
@@ -1356,6 +1481,11 @@ function Library:CreateWindow(config)
                 valLabel.TextXAlignment = Enum.TextXAlignment.Right
                 valLabel.Parent = row
 
+                Library:RegisterText(titleLabel, false)
+                Library:RegisterText(valLabel, false)
+                Library:RegisterColor(titleLabel, "TextColor3", "TextColor")
+                Library:RegisterColor(valLabel, "TextColor3", "SubTextColor")
+
                 local track = Instance.new("TextButton")
                 track.Size = UDim2.new(1, 0, 0, 8)
                 track.Position = UDim2.new(0, 0, 0, 22)
@@ -1366,6 +1496,8 @@ function Library:CreateWindow(config)
                 track.AutoButtonColor = false
                 track.Parent = row
 
+                Library:RegisterColor(track, "BackgroundColor3", "GlassElement")
+
                 local tCorner = Instance.new("UICorner")
                 tCorner.CornerRadius = UDim.new(0, 4)
                 tCorner.Parent = track
@@ -1375,6 +1507,8 @@ function Library:CreateWindow(config)
                 fill.BackgroundColor3 = Library.Accent
                 fill.BorderSizePixel = 0
                 fill.Parent = track
+
+                Library:RegisterColor(fill, "BackgroundColor3", "Accent")
 
                 local fCorner = Instance.new("UICorner")
                 fCorner.CornerRadius = UDim.new(0, 4)
@@ -1425,9 +1559,6 @@ function Library:CreateWindow(config)
                 return SliderObj
             end
 
-            -- =============================================================
-            -- 3. DROPDOWN
-            -- =============================================================
             function Groupbox:AddDropdown(id, cfg)
                 cfg = cfg or {}
                 local text = cfg.Text or id or "Dropdown"
@@ -1451,6 +1582,9 @@ function Library:CreateWindow(config)
                 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
                 titleLabel.Parent = row
 
+                Library:RegisterText(titleLabel, false)
+                Library:RegisterColor(titleLabel, "TextColor3", "TextColor")
+
                 local mainBtn = Instance.new("TextButton")
                 mainBtn.Size = UDim2.new(1, 0, 0, 24)
                 mainBtn.Position = UDim2.new(0, 0, 0, 20)
@@ -1465,6 +1599,10 @@ function Library:CreateWindow(config)
                 mainBtn.AutoButtonColor = false
                 mainBtn.Parent = row
 
+                Library:RegisterText(mainBtn, false)
+                Library:RegisterColor(mainBtn, "BackgroundColor3", "GlassElement")
+                Library:RegisterColor(mainBtn, "TextColor3", "TextColor")
+
                 local bCorner = Instance.new("UICorner")
                 bCorner.CornerRadius = UDim.new(0, 4)
                 bCorner.Parent = mainBtn
@@ -1472,6 +1610,8 @@ function Library:CreateWindow(config)
                 local bStroke = Instance.new("UIStroke")
                 bStroke.Color = Library.GlassBorderSoft
                 bStroke.Parent = mainBtn
+
+                Library:RegisterColor(bStroke, "Color", "GlassBorderSoft")
 
                 local arrow = Instance.new("TextLabel")
                 arrow.Size = UDim2.new(0, 20, 1, 0)
@@ -1483,17 +1623,21 @@ function Library:CreateWindow(config)
                 arrow.TextSize = 9
                 arrow.Parent = mainBtn
 
+                Library:RegisterText(arrow, false)
+                Library:RegisterColor(arrow, "TextColor3", "SubTextColor")
+
                 local listFrame = Instance.new("Frame")
-                listFrame.Name = "DropList"
-                listFrame.Size = UDim2.new(1, 0, 0, 0)
-                listFrame.Position = UDim2.new(0, 0, 1, 4)
+                listFrame.Name = "DropdownOverlayList_" .. tostring(id)
+                listFrame.Size = UDim2.new(0, 100, 0, 0)
                 listFrame.BackgroundColor3 = Library.GlassSection
                 listFrame.BackgroundTransparency = 0.05
                 listFrame.BorderSizePixel = 0
                 listFrame.Visible = false
-                listFrame.ZIndex = 50
                 listFrame.ClipsDescendants = true
-                listFrame.Parent = mainBtn
+                listFrame.Parent = Library.PopupGui
+
+                listFrame:SetAttribute("OpenerBtn", mainBtn)
+                Library:RegisterColor(listFrame, "BackgroundColor3", "GlassSection")
 
                 local lCorner = Instance.new("UICorner")
                 lCorner.CornerRadius = UDim.new(0, 4)
@@ -1502,6 +1646,8 @@ function Library:CreateWindow(config)
                 local lStroke = Instance.new("UIStroke")
                 lStroke.Color = Library.GlassBorder
                 lStroke.Parent = listFrame
+
+                Library:RegisterColor(lStroke, "Color", "GlassBorder")
 
                 local lLayout = Instance.new("UIListLayout")
                 lLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1521,7 +1667,7 @@ function Library:CreateWindow(config)
                         for _, child in ipairs(listFrame:GetChildren()) do
                             if child:IsA("TextButton") then child:Destroy() end
                         end
-                        listFrame.Size = UDim2.new(1, 0, 0, #newVals * 22)
+                        listFrame.Size = UDim2.new(0, mainBtn.AbsoluteSize.X, 0, #newVals * 22)
                         for _, opt in ipairs(newVals) do
                             local optBtn = Instance.new("TextButton")
                             optBtn.Size = UDim2.new(1, 0, 0, 22)
@@ -1533,12 +1679,13 @@ function Library:CreateWindow(config)
                             optBtn.TextColor3 = (opt == selfDd.Value) and Library.Accent or Library.TextColor
                             optBtn.TextSize = 11
                             optBtn.TextXAlignment = Enum.TextXAlignment.Left
-                            optBtn.ZIndex = 51
                             optBtn.Parent = listFrame
+
+                            Library:RegisterText(optBtn, false)
 
                             optBtn.MouseButton1Click:Connect(function()
                                 selfDd:SetValue(opt)
-                                listFrame.Visible = false
+                                Library:CloseActivePopup()
                                 arrow.Text = "v"
                             end)
                         end
@@ -1548,8 +1695,18 @@ function Library:CreateWindow(config)
                 DropdownObj:SetValues(values)
 
                 mainBtn.MouseButton1Click:Connect(function()
-                    listFrame.Visible = not listFrame.Visible
-                    arrow.Text = listFrame.Visible and "^" or "v"
+                    if listFrame.Visible then
+                        Library:CloseActivePopup()
+                        arrow.Text = "v"
+                    else
+                        Library:CloseActivePopup()
+                        local absPos = mainBtn.AbsolutePosition
+                        listFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + mainBtn.AbsoluteSize.Y + 4)
+                        listFrame.Size = UDim2.new(0, mainBtn.AbsoluteSize.X, 0, #DropdownObj.Values * 22)
+                        listFrame.Visible = true
+                        Library.ActivePopup = listFrame
+                        arrow.Text = "^"
+                    end
                 end)
 
                 if id then
@@ -1559,9 +1716,6 @@ function Library:CreateWindow(config)
                 return DropdownObj
             end
 
-            -- =============================================================
-            -- 4. INPUT (TextBox)
-            -- =============================================================
             function Groupbox:AddInput(id, cfg)
                 cfg = cfg or {}
                 local text = cfg.Text or id or "Input"
@@ -1586,6 +1740,9 @@ function Library:CreateWindow(config)
                 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
                 titleLabel.Parent = row
 
+                Library:RegisterText(titleLabel, false)
+                Library:RegisterColor(titleLabel, "TextColor3", "TextColor")
+
                 local textBox = Instance.new("TextBox")
                 textBox.Size = UDim2.new(1, 0, 0, 24)
                 textBox.Position = UDim2.new(0, 0, 0, 20)
@@ -1601,6 +1758,11 @@ function Library:CreateWindow(config)
                 textBox.ClearTextOnFocus = false
                 textBox.Parent = row
 
+                Library:RegisterText(textBox, false)
+                Library:RegisterColor(textBox, "BackgroundColor3", "GlassElement")
+                Library:RegisterColor(textBox, "TextColor3", "TextColor")
+                Library:RegisterColor(textBox, "PlaceholderColor3", "SubTextColor")
+
                 local tbCorner = Instance.new("UICorner")
                 tbCorner.CornerRadius = UDim.new(0, 4)
                 tbCorner.Parent = textBox
@@ -1608,6 +1770,8 @@ function Library:CreateWindow(config)
                 local tbStroke = Instance.new("UIStroke")
                 tbStroke.Color = Library.GlassBorderSoft
                 tbStroke.Parent = textBox
+
+                Library:RegisterColor(tbStroke, "Color", "GlassBorderSoft")
 
                 local InputObj = {
                     Value = def,
@@ -1638,9 +1802,6 @@ function Library:CreateWindow(config)
                 return InputObj
             end
 
-            -- =============================================================
-            -- 5. BUTTON
-            -- =============================================================
             function Groupbox:AddButton(cfg)
                 local text = (typeof(cfg) == "table" and cfg.Text) or tostring(cfg) or "Button"
                 local callback = (typeof(cfg) == "table" and cfg.Callback) or function() end
@@ -1658,6 +1819,10 @@ function Library:CreateWindow(config)
                 btn.AutoButtonColor = false
                 btn.Parent = container
 
+                Library:RegisterText(btn, false)
+                Library:RegisterColor(btn, "BackgroundColor3", "GlassElement")
+                Library:RegisterColor(btn, "TextColor3", "TextColor")
+
                 local bCorner = Instance.new("UICorner")
                 bCorner.CornerRadius = UDim.new(0, 4)
                 bCorner.Parent = btn
@@ -1665,6 +1830,8 @@ function Library:CreateWindow(config)
                 local bStroke = Instance.new("UIStroke")
                 bStroke.Color = Library.GlassBorderSoft
                 bStroke.Parent = btn
+
+                Library:RegisterColor(bStroke, "Color", "GlassBorderSoft")
 
                 btn.MouseEnter:Connect(function()
                     Library:Tween(btn, 0.12, { BackgroundColor3 = Library.GlassBorder, BackgroundTransparency = 0.1 })
@@ -1680,9 +1847,6 @@ function Library:CreateWindow(config)
                 return btn
             end
 
-            -- =============================================================
-            -- 6. LABEL (CHAINING: KeyPicker)
-            -- =============================================================
             function Groupbox:AddLabel(labelText)
                 local row = Instance.new("Frame")
                 row.Name = "LabelRow"
@@ -1699,6 +1863,9 @@ function Library:CreateWindow(config)
                 lbl.TextSize = 12
                 lbl.TextXAlignment = Enum.TextXAlignment.Left
                 lbl.Parent = row
+
+                Library:RegisterText(lbl, false)
+                Library:RegisterColor(lbl, "TextColor3", "SubTextColor")
 
                 local addonsContainer = Instance.new("Frame")
                 addonsContainer.Name = "Addons"
@@ -1730,13 +1897,16 @@ function Library:CreateWindow(config)
                         Callback = kpCb,
                         SetValue = function(selfKp, key)
                             selfKp.Value = key
+                            if selfKp.Button then
+                                selfKp.Button.Text = "[" .. ConvertKeyCodeToString(key) .. "]"
+                            end
                         end
                     }
 
                     if not noUi then
                         local kpBtn = Instance.new("TextButton")
                         kpBtn.Name = "KeyBtn_" .. tostring(kpId)
-                        kpBtn.Size = UDim2.new(0, 44, 0, 16)
+                        kpBtn.Size = UDim2.new(0, 48, 0, 16)
                         kpBtn.BackgroundColor3 = Library.GlassElement
                         kpBtn.BackgroundTransparency = 0.2
                         kpBtn.BorderSizePixel = 0
@@ -1744,12 +1914,17 @@ function Library:CreateWindow(config)
                         kpBtn.Text = "[" .. ConvertKeyCodeToString(kpDef) .. "]"
                         kpBtn.TextColor3 = Library.SubTextColor
                         kpBtn.TextSize = 10
+                        kpBtn.TextTruncate = Enum.TextTruncate.AtEnd
+                        kpBtn.ClipsDescendants = true
                         kpBtn.AutoButtonColor = false
                         kpBtn.Parent = addonsContainer
 
                         local kpCorner = Instance.new("UICorner")
                         kpCorner.CornerRadius = UDim.new(0, 3)
                         kpCorner.Parent = kpBtn
+
+                        Library:RegisterText(kpBtn, false)
+                        Library:RegisterColor(kpBtn, "BackgroundColor3", "GlassElement")
 
                         local listening = false
                         kpBtn.MouseButton1Click:Connect(function()
@@ -1806,9 +1981,6 @@ function Library:CreateWindow(config)
     return WindowObj
 end
 
--- =========================================================================
--- SAVE MANAGER (CONFIG SAVE / LOAD)
--- =========================================================================
 function SaveManager:SetLibrary(lib)
     self.Library = lib
 end
@@ -2001,9 +2173,6 @@ function SaveManager:BuildConfigSection(tab)
     })
 end
 
--- =========================================================================
--- THEME MANAGER
--- =========================================================================
 function ThemeManager:SetLibrary(lib)
     self.Library = lib
 end
@@ -2028,7 +2197,7 @@ function ThemeManager:ApplyToTab(tab)
         Callback = function(themeName)
             local col = self.BuiltInThemes[themeName]
             if col then
-                self.Library.Accent = col
+                self.Library:UpdateThemeColor("Accent", col)
                 if Options["ThemeManager_CustomAccent"] then
                     Options["ThemeManager_CustomAccent"]:SetValue(col)
                 end
@@ -2045,7 +2214,58 @@ function ThemeManager:ApplyToTab(tab)
         Default = self.Library.Accent,
         Title = "Accent Tint",
         Callback = function(color)
-            self.Library.Accent = color
+            self.Library:UpdateThemeColor("Accent", color)
+        end
+    })
+
+    local bgToggle = gb:AddToggle("ThemeManager_BgColorToggle", {
+        Text = "Custom Background Color",
+        Default = false
+    })
+
+    bgToggle:AddColorPicker("ThemeManager_CustomBg", {
+        Default = self.Library.GlassBg,
+        Title = "Background Color",
+        Callback = function(color)
+            self.Library:UpdateThemeColor("GlassBg", color)
+        end
+    })
+
+    local borderToggle = gb:AddToggle("ThemeManager_BorderColorToggle", {
+        Text = "Custom Border Color",
+        Default = false
+    })
+
+    borderToggle:AddColorPicker("ThemeManager_CustomBorder", {
+        Default = self.Library.GlassBorder,
+        Title = "Border Color",
+        Callback = function(color)
+            self.Library:UpdateThemeColor("GlassBorder", color)
+        end
+    })
+
+    local textToggle = gb:AddToggle("ThemeManager_TextColorToggle", {
+        Text = "Custom Text Color",
+        Default = false
+    })
+
+    textToggle:AddColorPicker("ThemeManager_CustomText", {
+        Default = self.Library.TextColor,
+        Title = "Text Color",
+        Callback = function(color)
+            self.Library:UpdateThemeColor("TextColor", color)
+        end
+    })
+
+    gb:AddDropdown("ThemeManager_FontSelector", {
+        Text = "Interface Typography Font",
+        Values = FontKeys,
+        Default = "Gotham",
+        Callback = function(fontName)
+            local targetFont = Fonts[fontName]
+            if targetFont then
+                self.Library:SetFont(targetFont)
+            end
         end
     })
 
