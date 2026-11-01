@@ -77,84 +77,84 @@ local Library = {
     MainWindow = nil,
     NotificationContainer = nil,
     BgImageLabel = nil,
-    LucideCache = {},
+    LucideIcons = {},
     ActivePopup = nil,
     TextObjects = {},
     InstanceColors = {}
 }
 
-local BuiltInLucide = {
-    ["swords"] = "rbxassetid://10709791437",
-    ["sword"] = "rbxassetid://10709791281",
-    ["crosshair"] = "rbxassetid://10709769841",
-    ["shield"] = "rbxassetid://10723346959",
-    ["flame"] = "rbxassetid://10709775963",
-    ["eye"] = "rbxassetid://10723345518",
-    ["activity"] = "rbxassetid://10709752035",
-    ["globe"] = "rbxassetid://10723343321",
-    ["settings"] = "rbxassetid://10734950309",
-    ["box"] = "rbxassetid://10709759764",
-    ["user"] = "rbxassetid://10747373176",
-    ["users"] = "rbxassetid://10747373426",
-    ["zap"] = "rbxassetid://10734996996",
-    ["terminal"] = "rbxassetid://10747372431",
-    ["code"] = "rbxassetid://10709768704",
-    ["compass"] = "rbxassetid://10709769317",
-    ["search"] = "rbxassetid://10734883986",
-    ["file-text"] = "rbxassetid://10723346158",
-    ["folder"] = "rbxassetid://10723346376",
-    ["bell"] = "rbxassetid://10709756155",
-    ["lock"] = "rbxassetid://10723346593",
-    ["key"] = "rbxassetid://10723346487",
-    ["trash"] = "rbxassetid://10747373059",
-    ["save"] = "rbxassetid://10734883598",
-    ["sliders"] = "rbxassetid://10734950857",
-    ["mouse-pointer"] = "rbxassetid://10734884248",
-    ["cross"] = "rbxassetid://10709769993",
-    ["info"] = "rbxassetid://10723415903",
-    ["alert-triangle"] = "rbxassetid://10709752996",
-    ["check-circle"] = "rbxassetid://10709762142"
-}
-
-local function ResolveIcon(iconInput)
-    if not iconInput or iconInput == "" then return "" end
-    iconInput = tostring(iconInput)
-
-    if iconInput:find("rbxassetid://") or iconInput:find("http://") or iconInput:find("https://") then
-        return iconInput
-    end
-    if tonumber(iconInput) then
-        return "rbxassetid://" .. iconInput
-    end
-
-    local cleanName = iconInput:lower():gsub("^lucide%-", ""):gsub("_", "-")
-
-    if Library.LucideCache[cleanName] then
-        return Library.LucideCache[cleanName]
-    end
-
-    if BuiltInLucide[cleanName] then
-        Library.LucideCache[cleanName] = BuiltInLucide[cleanName]
-        return BuiltInLucide[cleanName]
-    end
-
-    local success, assetId = pcall(function()
+local function InitLucideAPI()
+    local ok, res = pcall(function()
         if game.HttpGet then
-            local json = game:HttpGet("https://raw.githubusercontent.com/Footagesus/lucide-roblox/main/icons.json")
-            local parsed = HttpService:JSONDecode(json)
-            if parsed and parsed[cleanName] then
-                return "rbxassetid://" .. tostring(parsed[cleanName])
+            local src = game:HttpGet("https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau", true)
+            local fn = loadstring(src)
+            if fn then
+                return fn()
             end
         end
         return nil
     end)
 
-    if success and assetId then
-        Library.LucideCache[cleanName] = assetId
-        return assetId
+    if ok and typeof(res) == "table" then
+        for resolution, catList in pairs(res) do
+            if typeof(catList) == "table" then
+                for name, data in pairs(catList) do
+                    if typeof(data) == "table" and data[1] then
+                        local clean = tostring(name):lower():gsub("^lucide%-", ""):gsub("_", "-"):gsub("%s+", "-")
+                        if not Library.LucideIcons[clean] or resolution == "48px" then
+                            Library.LucideIcons[clean] = data
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+task.spawn(InitLucideAPI)
+
+function Library:ApplyIcon(imageLabel, iconInput)
+    if not imageLabel or not iconInput or iconInput == "" then
+        if imageLabel then
+            imageLabel.Image = ""
+            imageLabel.ImageRectSize = Vector2.zero
+            imageLabel.ImageRectOffset = Vector2.zero
+        end
+        return false
     end
 
-    return "rbxassetid://10709759764"
+    iconInput = tostring(iconInput)
+
+    if iconInput:find("rbxassetid://") or iconInput:find("http://") or iconInput:find("https://") then
+        imageLabel.Image = iconInput
+        imageLabel.ImageRectSize = Vector2.zero
+        imageLabel.ImageRectOffset = Vector2.zero
+        return true
+    end
+
+    if tonumber(iconInput) then
+        imageLabel.Image = "rbxassetid://" .. iconInput
+        imageLabel.ImageRectSize = Vector2.zero
+        imageLabel.ImageRectOffset = Vector2.zero
+        return true
+    end
+
+    local cleanName = iconInput:lower():gsub("^lucide%-", ""):gsub("_", "-"):gsub("%s+", "-")
+    local iconData = self.LucideIcons[cleanName]
+
+    if iconData and typeof(iconData) == "table" then
+        imageLabel.Image = "rbxassetid://" .. tostring(iconData[1])
+        local size = iconData[2] or { 48, 48 }
+        local offset = iconData[3] or { 0, 0 }
+        imageLabel.ImageRectSize = Vector2.new(size[1], size[2])
+        imageLabel.ImageRectOffset = Vector2.new(offset[1], offset[2])
+        return true
+    end
+
+    imageLabel.Image = "rbxassetid://10709759764"
+    imageLabel.ImageRectSize = Vector2.zero
+    imageLabel.ImageRectOffset = Vector2.zero
+    return false
 end
 
 local SaveManager = {
@@ -406,28 +406,39 @@ end
 function Library:Notify(config, duration)
     local title = "Notification"
     local message = ""
-    local icon = "rbxassetid://10723415903"
+    local icon = "bell"
     local notifDuration = duration or 3
 
     if typeof(config) == "table" then
-        title = config.Title or title
-        message = config.Message or config.Text or message
-        notifDuration = config.Duration or notifDuration
-        if config.Icon then
-            icon = ResolveIcon(config.Icon)
+        title = config.Title or config.Header or config.Name or title
+        message = config.Content or config.Description or config.Desc or config.Message or config.Text or config.Body or config[1] or ""
+        notifDuration = config.Duration or config.Time or duration or notifDuration
+        if config.Icon or config.Image then
+            icon = config.Icon or config.Image
         end
+    elseif typeof(config) == "string" then
+        message = config
+        notifDuration = duration or notifDuration
     else
         message = tostring(config)
+        notifDuration = duration or notifDuration
     end
+
+    if typeof(message) == "table" then
+        message = message.Content or message.Description or message.Desc or message.Message or message.Text or message[1] or HttpService:JSONEncode(message)
+    end
+
+    message = tostring(message)
+    title = tostring(title)
 
     if not self.NotificationContainer then return end
 
     local notifFrame = Instance.new("Frame")
     notifFrame.Name = "Toast"
-    notifFrame.Size = UDim2.new(1, 0, 0, 52)
+    notifFrame.Size = UDim2.new(1, 0, 0, 56)
     notifFrame.Position = UDim2.new(1, 40, 0, 0)
-    notifFrame.BackgroundColor3 = self.GlassSection
-    notifFrame.BackgroundTransparency = 1
+    notifFrame.BackgroundColor3 = self.SolidPopup
+    notifFrame.BackgroundTransparency = 0
     notifFrame.BorderSizePixel = 0
     notifFrame.ClipsDescendants = true
     notifFrame.Parent = self.NotificationContainer
@@ -438,49 +449,48 @@ function Library:Notify(config, duration)
 
     local stroke = Instance.new("UIStroke")
     stroke.Color = self.GlassBorder
-    stroke.Thickness = 1
-    stroke.Transparency = 1
+    stroke.Thickness = 1.2
+    stroke.Transparency = 0.2
     stroke.Parent = notifFrame
 
     local accentBar = Instance.new("Frame")
-    accentBar.Size = UDim2.new(0, 3, 1, 0)
+    accentBar.Size = UDim2.new(0, 4, 1, 0)
     accentBar.Position = UDim2.new(0, 0, 0, 0)
     accentBar.BackgroundColor3 = self.Accent
     accentBar.BorderSizePixel = 0
-    accentBar.BackgroundTransparency = 1
     accentBar.Parent = notifFrame
 
     local iconLabel = Instance.new("ImageLabel")
-    iconLabel.Size = UDim2.new(0, 20, 0, 20)
-    iconLabel.Position = UDim2.new(0, 12, 0.5, -10)
+    iconLabel.Size = UDim2.new(0, 22, 0, 22)
+    iconLabel.Position = UDim2.new(0, 14, 0.5, -11)
     iconLabel.BackgroundTransparency = 1
-    iconLabel.Image = icon
     iconLabel.ImageColor3 = self.Accent
-    iconLabel.ImageTransparency = 1
     iconLabel.Parent = notifFrame
 
+    self:ApplyIcon(iconLabel, icon)
+
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -44, 0, 16)
-    titleLabel.Position = UDim2.new(0, 40, 0, 8)
+    titleLabel.Size = UDim2.new(1, -50, 0, 18)
+    titleLabel.Position = UDim2.new(0, 44, 0, 8)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Font = self.FontBold
     titleLabel.Text = title
     titleLabel.TextColor3 = self.TextColor
-    titleLabel.TextSize = 12
+    titleLabel.TextSize = 13
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.TextTransparency = 1
+    titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
     titleLabel.Parent = notifFrame
 
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, -44, 0, 16)
-    textLabel.Position = UDim2.new(0, 40, 0, 26)
+    textLabel.Size = UDim2.new(1, -50, 0, 18)
+    textLabel.Position = UDim2.new(0, 44, 0, 27)
     textLabel.BackgroundTransparency = 1
     textLabel.Font = self.Font
     textLabel.Text = message
     textLabel.TextColor3 = self.SubTextColor
     textLabel.TextSize = 11
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.TextTransparency = 1
+    textLabel.TextTruncate = Enum.TextTruncate.AtEnd
     textLabel.Parent = notifFrame
 
     local progressBar = Instance.new("Frame")
@@ -488,12 +498,11 @@ function Library:Notify(config, duration)
     progressBar.Position = UDim2.new(0, 0, 1, -2)
     progressBar.BackgroundColor3 = self.Accent
     progressBar.BorderSizePixel = 0
-    progressBar.BackgroundTransparency = 1
     progressBar.Parent = notifFrame
 
     Library:RegisterText(titleLabel, true)
     Library:RegisterText(textLabel, false)
-    Library:RegisterColor(notifFrame, "BackgroundColor3", "GlassSection")
+    Library:RegisterColor(notifFrame, "BackgroundColor3", "SolidPopup")
     Library:RegisterColor(stroke, "Color", "GlassBorder")
     Library:RegisterColor(accentBar, "BackgroundColor3", "Accent")
     Library:RegisterColor(iconLabel, "ImageColor3", "Accent")
@@ -501,25 +510,12 @@ function Library:Notify(config, duration)
     Library:RegisterColor(textLabel, "TextColor3", "SubTextColor")
     Library:RegisterColor(progressBar, "BackgroundColor3", "Accent")
 
-    Library:Tween(notifFrame, 0.35, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.15 }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    Library:Tween(stroke, 0.25, { Transparency = 0.3 })
-    Library:Tween(accentBar, 0.25, { BackgroundTransparency = 0 })
-    Library:Tween(iconLabel, 0.25, { ImageTransparency = 0 })
-    Library:Tween(titleLabel, 0.25, { TextTransparency = 0 })
-    Library:Tween(textLabel, 0.25, { TextTransparency = 0 })
-    Library:Tween(progressBar, 0.25, { BackgroundTransparency = 0.3 })
-
+    Library:Tween(notifFrame, 0.35, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     Library:Tween(progressBar, notifDuration, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
 
     task.delay(notifDuration, function()
         if not notifFrame.Parent then return end
-        Library:Tween(notifFrame, 0.3, { Position = UDim2.new(1, 40, 0, 0), BackgroundTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        Library:Tween(stroke, 0.2, { Transparency = 1 })
-        Library:Tween(accentBar, 0.2, { BackgroundTransparency = 1 })
-        Library:Tween(iconLabel, 0.2, { ImageTransparency = 1 })
-        Library:Tween(titleLabel, 0.2, { TextTransparency = 1 })
-        Library:Tween(textLabel, 0.2, { TextTransparency = 1 })
-        Library:Tween(progressBar, 0.2, { BackgroundTransparency = 1 })
+        Library:Tween(notifFrame, 0.3, { Position = UDim2.new(1, 40, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
         task.wait(0.32)
         notifFrame:Destroy()
     end)
@@ -544,8 +540,8 @@ function Library:InitKeySystem(config)
     KeyFrame.Name = "KeyModal"
     KeyFrame.Size = UDim2.new(0, 360, 0, 220)
     KeyFrame.Position = UDim2.new(0.5, -180, 0.5, -110)
-    KeyFrame.BackgroundColor3 = self.GlassBg
-    KeyFrame.BackgroundTransparency = 0.1
+    KeyFrame.BackgroundColor3 = self.SolidPopup
+    KeyFrame.BackgroundTransparency = 0
     KeyFrame.BorderSizePixel = 0
     KeyFrame.ClipsDescendants = true
     KeyFrame.Parent = ScreenGui
@@ -668,7 +664,7 @@ function Library:InitKeySystem(config)
     discordBtn.MouseButton1Click:Connect(function()
         if setclipboard then
             setclipboard(DiscordUrl)
-            Library:Notify({ Title = "Clipboard", Message = "Discord link copied to clipboard!", Duration = 2.5 })
+            Library:Notify({ Title = "Clipboard", Message = "Discord link copied to clipboard!", Duration = 2.5, Icon = "check-circle" })
         end
     end)
 
@@ -976,8 +972,6 @@ function Library:CreateWindow(config)
             RightGroupboxes = {},
         }
 
-        local finalIcon = ResolveIcon(iconInput)
-
         local tabButton = Instance.new("TextButton")
         tabButton.Name = "TabBtn_" .. tabName
         tabButton.Size = UDim2.new(1, 0, 0, 32)
@@ -993,20 +987,19 @@ function Library:CreateWindow(config)
         btnCorner.CornerRadius = UDim.new(0, 6)
         btnCorner.Parent = tabButton
 
-        local iconImg = nil
-        if finalIcon and finalIcon ~= "" then
-            iconImg = Instance.new("ImageLabel")
-            iconImg.Size = UDim2.new(0, 15, 0, 15)
-            iconImg.Position = UDim2.new(0, 8, 0.5, -8)
-            iconImg.BackgroundTransparency = 1
-            iconImg.Image = finalIcon
-            iconImg.ImageColor3 = Library.SubTextColor
-            iconImg.Parent = tabButton
-        end
+        local iconImg = Instance.new("ImageLabel")
+        iconImg.Size = UDim2.new(0, 16, 0, 16)
+        iconImg.Position = UDim2.new(0, 8, 0.5, -8)
+        iconImg.BackgroundTransparency = 1
+        iconImg.ImageColor3 = Library.SubTextColor
+        iconImg.Parent = tabButton
+
+        local hasIcon = Library:ApplyIcon(iconImg, iconInput)
+        iconImg.Visible = hasIcon
 
         local tabTitle = Instance.new("TextLabel")
-        tabTitle.Size = UDim2.new(1, iconImg and -34 or -16, 1, 0)
-        tabTitle.Position = UDim2.new(0, iconImg and 32 or 12, 0, 0)
+        tabTitle.Size = UDim2.new(1, hasIcon and -34 or -16, 1, 0)
+        tabTitle.Position = UDim2.new(0, hasIcon and 32 or 12, 0, 0)
         tabTitle.BackgroundTransparency = 1
         tabTitle.Font = Library.Font
         tabTitle.Text = tabName
@@ -1106,7 +1099,7 @@ function Library:CreateWindow(config)
                 Library:Tween(t.Button, 0.15, { BackgroundTransparency = 1 })
                 Library:Tween(t.Label, 0.15, { TextColor3 = Library.SubTextColor })
                 Library:Tween(t.ActiveBar, 0.15, { BackgroundTransparency = 1 })
-                if t.Icon then
+                if t.Icon and t.Icon.Visible then
                     Library:Tween(t.Icon, 0.15, { ImageColor3 = Library.SubTextColor })
                 end
             end
@@ -1118,7 +1111,7 @@ function Library:CreateWindow(config)
             Library:Tween(tabButton, 0.15, { BackgroundTransparency = 0.25 })
             Library:Tween(tabTitle, 0.15, { TextColor3 = Library.TextColor })
             Library:Tween(activeBar, 0.15, { BackgroundTransparency = 0 })
-            if iconImg then
+            if iconImg.Visible then
                 Library:Tween(iconImg, 0.15, { ImageColor3 = Library.Accent })
             end
             WindowObj.CurrentTab = Tab
@@ -2132,14 +2125,14 @@ function SaveManager:Save(name)
 
     local path = self.Folder .. "/" .. name .. ".json"
     writefile(path, HttpService:JSONEncode(data))
-    self.Library:Notify({ Title = "Configuration", Message = "Config saved: " .. name, Duration = 3 })
+    self.Library:Notify({ Title = "Configuration", Message = "Config saved: " .. name, Duration = 3, Icon = "save" })
 end
 
 function SaveManager:Load(name)
     if not (readfile and isfile) then return end
     local path = self.Folder .. "/" .. name .. ".json"
     if not isfile(path) then
-        self.Library:Notify({ Title = "Configuration", Message = "Config not found: " .. name, Duration = 3 })
+        self.Library:Notify({ Title = "Configuration", Message = "Config not found: " .. name, Duration = 3, Icon = "alert-triangle" })
         return
     end
 
@@ -2164,7 +2157,7 @@ function SaveManager:Load(name)
         end
     end
 
-    self.Library:Notify({ Title = "Configuration", Message = "Config loaded: " .. name, Duration = 3 })
+    self.Library:Notify({ Title = "Configuration", Message = "Config loaded: " .. name, Duration = 3, Icon = "folder" })
 end
 
 function SaveManager:Delete(name)
@@ -2172,7 +2165,7 @@ function SaveManager:Delete(name)
     local path = self.Folder .. "/" .. name .. ".json"
     if isfile(path) then
         delfile(path)
-        self.Library:Notify({ Title = "Configuration", Message = "Config deleted: " .. name, Duration = 3 })
+        self.Library:Notify({ Title = "Configuration", Message = "Config deleted: " .. name, Duration = 3, Icon = "trash" })
     end
 end
 
@@ -2270,7 +2263,7 @@ function SaveManager:BuildConfigSection(tab)
             if selectedConfig ~= "" and writefile then
                 SafeMakeFolder(self.Folder)
                 writefile(self.Folder .. "/" .. self.AutoloadFile, selectedConfig)
-                self.Library:Notify({ Title = "Configuration", Message = "Autoload set to: " .. selectedConfig, Duration = 3 })
+                self.Library:Notify({ Title = "Configuration", Message = "Autoload set to: " .. selectedConfig, Duration = 3, Icon = "save" })
             end
         end
     })
