@@ -1,252 +1,152 @@
-# Ruby UI Framework
+# RubyUI
 
-로블록스 Luau 환경을 위해 설계된 글래스모피즘(Frosted Glass) UI 라이브러리입니다. Lucide 아이콘 및 Roblox 에셋 자동 해석, 독립 오버레이 팝업 엔진, 커스텀 배경 이미지 지원, 10종 타이포그래피 폰트 엔진, 체이닝 시스템 및 설정/테마 관리자를 기본 제공합니다.
+로블록스 Luau용 싱글 파일 UI 라이브러리. 사이드바 탭 + 좌/우 그룹박스 레이아웃, 토글/슬라이더/드롭다운/인풋/버튼/키피커/컬러피커 위젯, 알림 토스트, 설정 저장/불러오기(SaveManager), 테마 매니저(ThemeManager), 선택적 키 인증 화면(InitKeySystem)을 포함합니다.
 
----
+## 설치
 
-## 주요 기능
-
-* **독립 팝업 오버레이 레이어 (`PopupGui`)**: 드롭다운 및 색상 선택기 창이 독립된 최상위 렌더 레이어에서 렌더링되어 스크롤 컨테이너에 잘리거나 뒷면 버튼이 클릭되는 버그 완전 차단
-* **불투명 솔리드 팝업 백그라운드**: 팝업 내부 배경을 완전 불투명(`SolidPopup`) 처리하여 뒷 배경의 텍스트 및 컨트롤이 투과되어 겹쳐 보이는 현상 제거
-* **리치 토스트 알림 (Rich Toast Notification)**: 타이틀, 메시지, Lucide 아이콘 연동 및 잔여 시간 프로그레스 바가 포함된 슬라이드 인/아웃 알림
-* **커스텀 배경 이미지 및 투명도 조절**: 이미지 URL/Asset ID를 통한 윈도우 배경 렌더링 및 실시간 투명도 슬라이더 연동
-* **부드러운 탭 전환 애니메이션**: 탭 전환 시 좌우 슬라이드 오프셋 및 투명도 트윈 동시 적용
-* **Lucide & Roblox 에셋 자동 리졸빙**: `"swords"`, `"flame"`, `"eye"`, `"settings"` 등의 영문 키워드 입력 시 자동으로 에셋 ID 변환
-* **키바인드 텍스트 오버플로우 방지**: 긴 키바인드 이름이 슬롯을 벗어나지 않도록 말줄임표(`...`) 자동 처리
-* **체이닝 아키텍처**: `AddToggle(...):AddColorPicker(...):AddKeyPicker(...)` 및 `AddLabel(...):AddKeyPicker(...)` 체이닝 지원
-* **Config & Theme 매니저**: JSON 기반 인덱스 제외/자동 로드 기능 및 10종 폰트, 실시간 색상 변경 지원
-
----
-
-## 1. 라이브러리 불러오기 및 창 생성
+`rubyui.lua`를 실행기에서 불러오면 `Library` 테이블이 반환됩니다.
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/rubyisbest276/scripts/refs/heads/main/ui.lua"))()
+local Library = loadstring(game:HttpGet("https://your-host/rubyui.lua"))()
+```
+
+로컬 파일로 테스트 중이라면:
+
+```lua
+local Library = loadstring(readfile("rubyui.lua"))()
+```
+
+## 빠른 시작
+
+```lua
+local Library = loadstring(game:HttpGet("https://your-host/rubyui.lua"))()
 
 local Window = Library:CreateWindow({
-    Title = "EXTERNAL V2",
-    SubTitle = "UNIVERSAL",
-    Footer = "Build 2026.11 | Daegu",
-    Center = true,
-    AutoShow = true,
-    BackgroundImage = "rbxassetid://YOUR_IMAGE_ID", -- 선택 사항 (URL 또는 rbxassetid://)
-    ImageTransparency = 0.85                      -- 배경 이미지 투명도 (0: 불투명 ~ 1: 투명)
+    Title = "RUBY UI",
+    SubTitle = "v1.0",
+    Footer = "made with RubyUI",
 })
 
-```
+local Tab = Window:AddTab("Main", "home")
+local Left = Tab:AddLeftGroupbox("General")
 
----
-
-## 2. 탭 구성 (Tab & Icon)
-
-Lucide 아이콘 명칭 또는 Roblox Asset ID를 두 번째 파라미터로 지정할 수 있습니다.
-
-```lua
-local Tabs = {
-    Combat   = Window:AddTab("Combat", "swords"),             -- Lucide 아이콘
-    Rage     = Window:AddTab("Rage", "flame"),
-    Visuals  = Window:AddTab("Visuals", "eye"),
-    Movement = Window:AddTab("Movement", "activity"),
-    World    = Window:AddTab("World", "globe"),
-    Misc     = Window:AddTab("Misc", "box"),
-    Settings = Window:AddTab("Settings", "rbxassetid://10734950309") -- Asset ID
-}
-
-```
-
----
-
-## 3. 그룹박스 및 컨트롤 구현 (Groupbox & Controls)
-
-각 탭은 좌측(`AddLeftGroupbox`)과 우측(`AddRightGroupbox`) 2열 컬럼으로 구성됩니다.
-
-### Toggle 및 체이닝 (ColorPicker, KeyPicker)
-
-```lua
-local MainCombat = Tabs.Combat:AddLeftGroupbox("Aimbot")
-
-MainCombat:AddToggle("silent_aim", {
-    Text = "Silent Aim Assist",
+Left:AddToggle("MyToggle", {
+    Text = "Example Toggle",
     Default = false,
-    Callback = function(state)
-        print("Silent Aim State:", state)
-    end
-}):AddColorPicker("aim_color", {
-    Title = "Indicator Color",
-    Default = Color3.fromRGB(250, 44, 83),
-    Callback = function(col)
-        -- Drawing 색상 업데이트
-    end
-}):AddKeyPicker("aim_bind", {
-    Default = "MB2",             -- Enum.KeyCode 또는 마우스 입력 (MB1, MB2, MB3)
-    Mode = "Hold",               -- "Hold" 또는 "Toggle"
-    SyncToggleState = true,      -- 키 입력 시 부모 토글의 On/Off 상태를 동기화
-    Callback = function(active)
-        print("Aimbot Keybind Active:", active)
-    end
+    Callback = function(value)
+        print("Toggle:", value)
+    end,
 })
-
 ```
 
-### Slider
+더 전체적인 흐름은 `example.lua`를 참고하세요.
+
+## `Library:CreateWindow(config)`
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `Title` | string | 창 제목 (기본 `"EXTERNAL V2"`) |
+| `SubTitle` | string | 제목 옆 서브텍스트 |
+| `Footer` | string | 하단 바 텍스트 |
+| `Center` | bool | 화면 중앙 배치 여부 (기본 true) |
+| `AutoShow` | bool | 생성 즉시 보이기 (기본 true) |
+| `BackgroundImage` | string | `rbxassetid://` 또는 URL 배경 이미지 |
+| `ImageTransparency` | number | 배경 이미지 투명도 (0~1) |
+
+`Window:AddTab(name, icon)` → `Tab`. `icon`은 Lucide 아이콘 이름("home", "settings" 등), `rbxassetid://숫자`, 숫자 문자열 중 아무거나 가능합니다.
+
+`Tab:AddLeftGroupbox(title)` / `Tab:AddRightGroupbox(title)` → `Groupbox`
+
+### Groupbox 위젯
+
+- `Groupbox:AddToggle(id, { Text, Default, Callback })` → 체이닝 가능한 오브젝트 반환
+  - `:AddColorPicker(id, { Default, Title, Callback })`
+  - `:AddKeyPicker(id, { Default, Mode = "Toggle" | "Hold", Text, SyncToggleState, NoUI, Callback })`
+- `Groupbox:AddSlider(id, { Text, Min, Max, Default, Rounding, Suffix, Callback })`
+- `Groupbox:AddDropdown(id, { Text, Values, Default, Callback })`
+  - 반환 오브젝트의 `:SetValues(newList)`로 목록 교체 가능
+- `Groupbox:AddInput(id, { Text, Default, Placeholder, Finished, Callback })`
+- `Groupbox:AddButton({ Text, Callback })`
+- `Groupbox:AddLabel(text)` → `:AddKeyPicker(id, cfg)` 체이닝 가능
+
+모든 `id`는 전역 `Toggles` / `Options` 테이블에 등록되어 다른 스크립트에서도 `Options["MyToggle"].Value`처럼 값을 읽을 수 있습니다 (`_G.Options`, `getgenv().Options`로도 접근 가능).
+
+## 알림
 
 ```lua
-MainCombat:AddSlider("aim_smooth", {
-    Text = "Smoothness Factor",
-    Min = 1,
-    Max = 30,
-    Default = 8,
-    Rounding = 1,
-    Suffix = "x",
-    Callback = function(val)
-        print("Smoothness set to:", val)
-    end
-})
-
-```
-
-### Dropdown (솔리드 오버레이 단일 선택)
-
-```lua
-MainCombat:AddDropdown("target_part", {
-    Text = "Target Hitbox",
-    Values = { "Head", "HumanoidRootPart", "UpperTorso" },
-    Default = "Head",
-    Callback = function(part)
-        print("Target Part:", part)
-    end
-})
-
-```
-
-### Input (TextBox)
-
-```lua
-MainCombat:AddInput("target_name", {
-    Text = "Whitelist Player",
-    Default = "",
-    Placeholder = "Player name here...",
-    Finished = true, -- true 설정 시 엔터 또는 포커스 아웃 시 콜백 실행
-    Callback = function(str)
-        print("Player Whitelisted:", str)
-    end
-})
-
-```
-
-### Button & Label (+ KeyPicker 체이닝)
-
-```lua
-MainCombat:AddButton({
-    Text = "Quick Reset",
-    Callback = function()
-        print("Reset Triggered")
-    end
-})
-
-MainCombat:AddLabel("Panic Switch"):AddKeyPicker("panic_key", {
-    Default = "X",
-    Mode = "Toggle",
-    Callback = function(active)
-        if active then
-            print("Panic Enabled")
-        end
-    end
-})
-
-```
-
----
-
-## 4. 리치 알림 시스템 (Rich Notifications)
-
-문자열 단독 호출 및 타이틀, 아이콘, 지속 시간이 포함된 테이블 형태를 모두 지원합니다.
-
-```lua
--- 테이블 형태 호출 (아이콘 및 프로그레스 바 포함)
 Library:Notify({
-    Title = "Combat Module",
-    Message = "Silent Aim configuration successfully applied.",
-    Icon = "check-circle", -- Lucide 아이콘 명칭
-    Duration = 3.5
+    Title = "Saved",
+    Message = "설정이 저장되었습니다.",
+    Duration = 3,
+    Icon = "check-circle",
 })
-
--- 단순 텍스트 호출
-Library:Notify("Preset loaded", 2)
-
 ```
 
----
-
-## 5. 테마 및 설정 관리자 (ThemeManager & SaveManager)
-
-`Settings` 탭에 UI를 자동 생성하여 폰트 10종, 배경 이미지, 색상 프리셋, JSON 설정 저장을 관리합니다.
+## 설정 저장 (SaveManager)
 
 ```lua
-local SaveManager = Library.SaveManager
-local ThemeManager = Library.ThemeManager
+Library.SaveManager:SetLibrary(Library)
+Library.SaveManager:SetFolder("RubyLibraryConfigs")
+Library.SaveManager:SetIgnoreIndexes({"MenuKeybind"}) -- 저장에서 제외할 id들
 
-SaveManager:SetLibrary(Library)
-ThemeManager:SetLibrary(Library)
-
-SaveManager:SetFolder("RubyHubConfigs")
-ThemeManager:SetFolder("RubyHubThemes")
-
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" }) -- Config 저장 제외 목록
-
--- Settings 탭에 UI 렌더링
-ThemeManager:ApplyToTab(Tabs.Settings)       -- 좌측: 테마, 폰트, 배경 이미지 설정
-SaveManager:BuildConfigSection(Tabs.Settings) -- 우측: Config 저장, 로드, 덮어쓰기
-
--- 시작 시 지정된 자동 로드 파일 불러오기
-SaveManager:LoadAutoloadConfig()
-
+local ConfigTab = Window:AddTab("Config", "save")
+Library.SaveManager:BuildConfigSection(ConfigTab)
+Library.SaveManager:LoadAutoloadConfig() -- 창 생성 이후 호출
 ```
 
-### 내장 타이포그래피 폰트 목록
+## 테마 (ThemeManager)
 
-`ThemeManager`의 폰트 선택 드롭다운을 통해 UI 전체 폰트를 실시간으로 변경할 수 있습니다.
+```lua
+Library.ThemeManager:SetLibrary(Library)
+Library.ThemeManager:SetFolder("RubyLibraryThemes")
 
-* `Gotham`
-* `GothamBold`
-* `Fredoka`
-* `Nunito`
-* `Ubuntu`
-* `SourceSans`
-* `Roboto`
-* `Montserrat`
-* `JosefinSans`
-* `Sarpanch`
+local ThemeTab = Window:AddTab("Theme", "palette")
+Library.ThemeManager:ApplyToTab(ThemeTab)
+```
 
----
+프리셋 액센트 색상, 커스텀 액센트/배경/테두리/텍스트 컬러피커, 배경 이미지 URL + 투명도 슬라이더, 폰트 선택, `End` 키로 UI 언로드까지 자동으로 구성됩니다.
 
-## 6. 키 시스템 및 언로드 훅 (Key System & Cleanup)
-
-### 인증 모달 실행 (선택 사항)
+## 키 인증 화면 (선택)
 
 ```lua
 Library:InitKeySystem({
-    Title = "SECURITY VERIFICATION",
-    Key = "RUBY-AUTH-KEY-2026",
-    Discord = "https://discord.gg/yourhub",
+    Title = "Key Verification",
+    Key = "RUBY-2026-KEY",
+    Discord = "https://discord.gg/your-invite",
     OnSuccess = function()
-        -- 인증 성공 시 메인 윈도우 빌드 함수 호출
-        BuildMainWindow()
-    end
+        -- 인증 성공 후 Library:CreateWindow(...) 호출
+    end,
 })
-
 ```
 
-### 안전한 리소스 정리 (`OnUnload`)
+## 키바인드 열기/닫기
 
-라이브러리 언로드(`Library:Unload()`) 시 Drawing API 오브젝트나 외부 연결 루프를 정리하는 훅을 등록합니다.
+`Options.MenuKeybind.Value`는 기본적으로 `Enum.KeyCode.RightShift`이며, 해당 키를 누르면 `Library:Toggle()`이 호출되어 창이 열고 닫힙니다. 다른 키로 바꾸려면:
+
+```lua
+Options.MenuKeybind:SetValue(Enum.KeyCode.Insert)
+```
+
+## 테마 커스터마이징 (코드로 직접)
+
+```lua
+Library:UpdateThemeColor("Accent", Color3.fromRGB(0, 230, 255))
+Library:SetFont(Enum.Font.Montserrat)
+Library:SetBackgroundImage("rbxassetid://1234567890", 0.85)
+```
+
+## 언로드
 
 ```lua
 Library:OnUnload(function()
-    if DrawingCircle then
-        DrawingCircle:Remove()
-    end
-    print("Cleaned up Drawing resources and UI memory.")
+    print("UI unloaded")
 end)
 
+Library:Unload()
 ```
+
+## 참고 사항
+
+- 모든 위젯은 선언형 `id` 기반이며, `id`를 넘기지 않으면 `Toggles`/`Options`에 등록되지 않습니다 (익명 위젯으로 사용 가능).
+- `Library:AddShadow` / `Library:ApplyGradient`는 커스텀 위젯을 직접 만들 때도 재사용할 수 있는 헬퍼입니다.
+- `SaveManager`는 `writefile` / `readfile` / `isfile` / `listfiles` / `delfile`가 있는 실행기에서만 동작합니다 (없으면 조용히 무시됨).
