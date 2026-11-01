@@ -84,28 +84,47 @@ local Library = {
 }
 
 local function InitLucideAPI()
-    local ok, res = pcall(function()
-        if game.HttpGet then
-            local src = game:HttpGet("https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau", true)
-            local fn = loadstring(src)
-            if fn then
-                return fn()
-            end
-        end
-        return nil
-    end)
+    local endpoints = {
+        "https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau",
+        "https://raw.githubusercontent.com/latte-soft/lucide-roblox/master/lib/Icons.luau",
+        "https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/a2c3063cc1e54db522dac4ab837b0a35a0da5ed0/icons.lua"
+    }
 
-    if ok and typeof(res) == "table" then
-        for resolution, catList in pairs(res) do
-            if typeof(catList) == "table" then
-                for name, data in pairs(catList) do
-                    if typeof(data) == "table" and data[1] then
+    for _, url in ipairs(endpoints) do
+        local ok, src = pcall(function()
+            if game.HttpGet then
+                return game:HttpGet(url, true)
+            end
+            return nil
+        end)
+
+        if ok and type(src) == "string" and #src > 100 then
+            local execOk, res = pcall(function()
+                return loadstring(src)()
+            end)
+
+            if execOk and typeof(res) == "table" then
+                local preferred = res["48px"] or res["36px"] or res["24px"] or res
+                for name, data in pairs(preferred) do
+                    if typeof(data) == "table" and (data[1] or data.id) then
                         local clean = tostring(name):lower():gsub("^lucide%-", ""):gsub("_", "-"):gsub("%s+", "-")
-                        if not Library.LucideIcons[clean] or resolution == "48px" then
-                            Library.LucideIcons[clean] = data
+                        Library.LucideIcons[clean] = data
+                    end
+                end
+
+                for resKey, catList in pairs(res) do
+                    if typeof(catList) == "table" then
+                        for name, data in pairs(catList) do
+                            if typeof(data) == "table" and (data[1] or data.id) then
+                                local clean = tostring(name):lower():gsub("^lucide%-", ""):gsub("_", "-"):gsub("%s+", "-")
+                                if not Library.LucideIcons[clean] then
+                                    Library.LucideIcons[clean] = data
+                                end
+                            end
                         end
                     end
                 end
+                break
             end
         end
     end
@@ -143,12 +162,42 @@ function Library:ApplyIcon(imageLabel, iconInput)
     local iconData = self.LucideIcons[cleanName]
 
     if iconData and typeof(iconData) == "table" then
-        imageLabel.Image = "rbxassetid://" .. tostring(iconData[1])
-        local size = iconData[2] or { 48, 48 }
-        local offset = iconData[3] or { 0, 0 }
-        imageLabel.ImageRectSize = Vector2.new(size[1], size[2])
-        imageLabel.ImageRectOffset = Vector2.new(offset[1], offset[2])
-        return true
+        if iconData[1] then
+            local assetId = tostring(iconData[1])
+            if not assetId:find("rbxassetid://") then
+                assetId = "rbxassetid://" .. assetId
+            end
+            imageLabel.Image = assetId
+
+            local sz = iconData[2]
+            local off = iconData[3]
+
+            if typeof(sz) == "table" then
+                imageLabel.ImageRectSize = Vector2.new(sz[1], sz[2])
+            elseif typeof(sz) == "Vector2" then
+                imageLabel.ImageRectSize = sz
+            else
+                imageLabel.ImageRectSize = Vector2.new(48, 48)
+            end
+
+            if typeof(off) == "table" then
+                imageLabel.ImageRectOffset = Vector2.new(off[1], off[2])
+            elseif typeof(off) == "Vector2" then
+                imageLabel.ImageRectOffset = off
+            else
+                imageLabel.ImageRectOffset = Vector2.zero
+            end
+            return true
+        elseif iconData.id then
+            local assetId = tostring(iconData.id)
+            if not assetId:find("rbxassetid://") then
+                assetId = "rbxassetid://" .. assetId
+            end
+            imageLabel.Image = assetId
+            imageLabel.ImageRectSize = iconData.imageRectSize or Vector2.zero
+            imageLabel.ImageRectOffset = iconData.imageRectOffset or Vector2.zero
+            return true
+        end
     end
 
     imageLabel.Image = "rbxassetid://10709759764"
@@ -403,52 +452,80 @@ function Library:Unload()
     end
 end
 
-function Library:Notify(config, duration)
+function Library.Notify(...)
+    local args = table.pack(...)
+    local first = args[1]
+    local second = args[2]
+    local third = args[3]
+
+    local config, duration
+    if first == Library then
+        config = second
+        duration = third
+    else
+        config = first
+        duration = second
+    end
+
     local title = "Notification"
     local message = ""
     local icon = "bell"
-    local notifDuration = duration or 3
+    local notifDuration = 3
 
     if typeof(config) == "table" then
-        title = config.Title or config.Header or config.Name or title
-        message = config.Content or config.Description or config.Desc or config.Message or config.Text or config.Body or config[1] or ""
+        title = config.Title or config.Header or config.Name or "Notification"
+        message = config.Message or config.Text or config.Content or config.Description or config.Desc or config.Body or config[1] or ""
         notifDuration = config.Duration or config.Time or duration or notifDuration
-        if config.Icon or config.Image then
-            icon = config.Icon or config.Image
-        end
+        icon = config.Icon or config.Image or icon
     elseif typeof(config) == "string" then
-        message = config
-        notifDuration = duration or notifDuration
+        if typeof(duration) == "string" then
+            title = config
+            message = duration
+            notifDuration = third or notifDuration
+        else
+            message = config
+            notifDuration = duration or notifDuration
+        end
     else
-        message = tostring(config)
+        message = tostring(config or "")
         notifDuration = duration or notifDuration
     end
 
     if typeof(message) == "table" then
-        message = message.Content or message.Description or message.Desc or message.Message or message.Text or message[1] or HttpService:JSONEncode(message)
+        message = message.Message or message.Text or message.Content or message.Description or message.Desc or message[1] or ""
+        if typeof(message) == "table" then
+            message = HttpService:JSONEncode(message)
+        end
     end
 
     message = tostring(message)
     title = tostring(title)
 
-    if not self.NotificationContainer then return end
+    if not Library.NotificationContainer then return end
+
+    local slotFrame = Instance.new("Frame")
+    slotFrame.Name = "ToastSlot"
+    slotFrame.Size = UDim2.new(1, 0, 0, 56)
+    slotFrame.BackgroundTransparency = 1
+    slotFrame.ClipsDescendants = false
+    slotFrame.Parent = Library.NotificationContainer
 
     local notifFrame = Instance.new("Frame")
     notifFrame.Name = "Toast"
-    notifFrame.Size = UDim2.new(1, 0, 0, 56)
+    notifFrame.Size = UDim2.new(1, 0, 1, 0)
     notifFrame.Position = UDim2.new(1, 40, 0, 0)
-    notifFrame.BackgroundColor3 = self.SolidPopup
+    notifFrame.BackgroundColor3 = Library.SolidPopup
     notifFrame.BackgroundTransparency = 0
     notifFrame.BorderSizePixel = 0
     notifFrame.ClipsDescendants = true
-    notifFrame.Parent = self.NotificationContainer
+    notifFrame.Parent = slotFrame
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = notifFrame
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color = self.GlassBorder
+    stroke.Color = Library.GlassBorder
     stroke.Thickness = 1.2
     stroke.Transparency = 0.2
     stroke.Parent = notifFrame
@@ -456,7 +533,7 @@ function Library:Notify(config, duration)
     local accentBar = Instance.new("Frame")
     accentBar.Size = UDim2.new(0, 4, 1, 0)
     accentBar.Position = UDim2.new(0, 0, 0, 0)
-    accentBar.BackgroundColor3 = self.Accent
+    accentBar.BackgroundColor3 = Library.Accent
     accentBar.BorderSizePixel = 0
     accentBar.Parent = notifFrame
 
@@ -464,30 +541,33 @@ function Library:Notify(config, duration)
     iconLabel.Size = UDim2.new(0, 22, 0, 22)
     iconLabel.Position = UDim2.new(0, 14, 0.5, -11)
     iconLabel.BackgroundTransparency = 1
-    iconLabel.ImageColor3 = self.Accent
+    iconLabel.ImageColor3 = Library.Accent
     iconLabel.Parent = notifFrame
 
-    self:ApplyIcon(iconLabel, icon)
+    local hasIcon = Library:ApplyIcon(iconLabel, icon)
+    iconLabel.Visible = hasIcon
+
+    local textOffsetX = hasIcon and 44 or 16
 
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -50, 0, 18)
-    titleLabel.Position = UDim2.new(0, 44, 0, 8)
+    titleLabel.Size = UDim2.new(1, -(textOffsetX + 12), 0, 18)
+    titleLabel.Position = UDim2.new(0, textOffsetX, 0, 8)
     titleLabel.BackgroundTransparency = 1
-    titleLabel.Font = self.FontBold
+    titleLabel.Font = Library.FontBold
     titleLabel.Text = title
-    titleLabel.TextColor3 = self.TextColor
+    titleLabel.TextColor3 = Library.TextColor
     titleLabel.TextSize = 13
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
     titleLabel.Parent = notifFrame
 
     local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, -50, 0, 18)
-    textLabel.Position = UDim2.new(0, 44, 0, 27)
+    textLabel.Size = UDim2.new(1, -(textOffsetX + 12), 0, 18)
+    textLabel.Position = UDim2.new(0, textOffsetX, 0, 27)
     textLabel.BackgroundTransparency = 1
-    textLabel.Font = self.Font
+    textLabel.Font = Library.Font
     textLabel.Text = message
-    textLabel.TextColor3 = self.SubTextColor
+    textLabel.TextColor3 = Library.SubTextColor
     textLabel.TextSize = 11
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -496,7 +576,7 @@ function Library:Notify(config, duration)
     local progressBar = Instance.new("Frame")
     progressBar.Size = UDim2.new(1, 0, 0, 2)
     progressBar.Position = UDim2.new(0, 0, 1, -2)
-    progressBar.BackgroundColor3 = self.Accent
+    progressBar.BackgroundColor3 = Library.Accent
     progressBar.BorderSizePixel = 0
     progressBar.Parent = notifFrame
 
@@ -514,10 +594,13 @@ function Library:Notify(config, duration)
     Library:Tween(progressBar, notifDuration, { Size = UDim2.new(0, 0, 0, 2) }, Enum.EasingStyle.Linear)
 
     task.delay(notifDuration, function()
-        if not notifFrame.Parent then return end
-        Library:Tween(notifFrame, 0.3, { Position = UDim2.new(1, 40, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        task.wait(0.32)
-        notifFrame:Destroy()
+        if not slotFrame.Parent then return end
+        Library:Tween(notifFrame, 0.25, { Position = UDim2.new(1, 40, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        task.wait(0.26)
+        if not slotFrame.Parent then return end
+        Library:Tween(slotFrame, 0.15, { Size = UDim2.new(1, 0, 0, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        task.wait(0.16)
+        slotFrame:Destroy()
     end)
 end
 
@@ -716,8 +799,8 @@ function Library:CreateWindow(config)
 
     local notifContainer = Instance.new("Frame")
     notifContainer.Name = "NotificationStack"
-    notifContainer.Size = UDim2.new(0, 290, 1, -40)
-    notifContainer.Position = UDim2.new(1, -306, 0, 20)
+    notifContainer.Size = UDim2.new(0, 310, 1, -40)
+    notifContainer.Position = UDim2.new(1, -326, 0, 20)
     notifContainer.BackgroundTransparency = 1
     notifContainer.Parent = ScreenGui
 
